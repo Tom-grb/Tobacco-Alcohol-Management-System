@@ -1,0 +1,12 @@
+{
+  "name": "fzh-user",
+  "version": "1.0.0",
+  "description": "User management cloud object",
+  "main": "index.obj.js",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
