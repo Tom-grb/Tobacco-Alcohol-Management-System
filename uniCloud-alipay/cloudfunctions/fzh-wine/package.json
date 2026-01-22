@@ -1,0 +1,7 @@
+{
+  "name": "fzh-wine",
+  "version": "1.0.0",
+  "description": "酒水管理云对象",
+  "main": "index.obj.js",
+  "dependencies": {}
+}

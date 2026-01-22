@@ -6,7 +6,6 @@
 		},
 		onShow: function() {
 			console.log('App Show')
-            this.checkLoginState()
 		},
 		onHide: function() {
 			console.log('App Hide')

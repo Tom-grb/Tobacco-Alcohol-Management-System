@@ -67,21 +67,21 @@
                 class="result-item" 
                 v-for="item in searchResult" 
                 :key="item._id"
-                @click="goToDetail(item._id)"
+                @click="goToDetail(item)"
             >
                 <!-- 左侧标签 -->
-                <view class="category-tag tag-cigarette">
-                    <text>烟</text>
+                <view :class="['category-tag', item.type === 'wine' ? 'tag-wine' : 'tag-cigarette']">
+                    <text>{{ item.type === 'wine' ? '酒' : '烟' }}</text>
                 </view>
                 
                 <!-- 中间信息 -->
                 <view class="item-info">
                     <text class="item-name">{{ item.name }}</text>
-                    <text class="item-code">{{ item.company_code }}</text>
+                    <text class="item-code" v-if="item.type !== 'wine'">{{ item.company_code }}</text>
                 </view>
                 
-                <!-- 右侧价格 -->
-                <view class="item-price">
+                <!-- 右侧价格 (仅香烟显示批发价) -->
+                <view class="item-price" v-if="item.type !== 'wine'">
                     <text class="price-label">批发价</text>
                     <text class="price-value">¥{{ item.wholesale_price }}</text>
                 </view>
@@ -183,7 +183,11 @@ export default {
       historyList: [],
       searchResult: [],
       searching: false,
-      searchTimer: null
+      searchTimer: null,
+      page: 1,
+      pageSize: 20,
+      hasMore: true,
+      isLoadingMore: false
     };
   },
   onLoad() {
@@ -198,6 +202,11 @@ export default {
       // 这里的场景主要是：用户点击某个商品进入详情页，进行了编辑或删除操作，返回来时需要更新列表
       if (this.isSearchMode && this.keyword) {
           this.doSearch(this.keyword, false);
+      }
+  },
+  onReachBottom() {
+      if (this.isSearchMode && this.keyword && this.hasMore && !this.isLoadingMore) {
+          this.doSearch(this.keyword, false, true);
       }
   },
   methods: {
@@ -261,23 +270,66 @@ export default {
            this.doSearch(val, true);
         }
     },
-    async doSearch(kw, saveHistory = false) {
+    async doSearch(kw, saveHistory = false, isLoadMore = false) {
         if (!kw) return;
-        this.searching = true;
+        
+        if (isLoadMore) {
+            this.isLoadingMore = true;
+        } else {
+            this.searching = true;
+            this.page = 1;
+            this.hasMore = true;
+            this.searchResult = [];
+        }
+
         try {
             const fzhCigarette = uniCloud.importObject('fzh-cigarette');
-            const res = await fzhCigarette.search(kw);
-            this.searchResult = res || [];
+            const fzhWine = uniCloud.importObject('fzh-wine');
+            
+            const skip = (this.page - 1) * this.pageSize;
+            
+            // 并行查询
+            const [cigRes, wineRes] = await Promise.all([
+                fzhCigarette.search(kw, skip, this.pageSize).catch(() => []),
+                fzhWine.search(kw, skip, this.pageSize).catch(() => [])
+            ]);
+
+            const cigarettes = (cigRes || []).map(item => ({ ...item, type: 'cigarette' }));
+            const wines = (wineRes || []).map(item => ({ ...item, type: 'wine' }));
+            
+            // 合并并按名称首字拼音排序
+            let combined = [...cigarettes, ...wines];
+            combined.sort((a, b) => {
+                return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+            });
+            
+            if (isLoadMore) {
+                this.searchResult = [...this.searchResult, ...combined];
+            } else {
+                this.searchResult = combined;
+            }
+            
+            // 判断是否还有更多：如果本次获取数量少于预期，通常没有更多了
+            // 这里我们对两个都取了 pageSize，所以如果总数加起来少于 (pageSize/2 * 2)? 
+            // 简单判断: 如果任何一个返回了 full page，可能还有。
+            // 最安全的判断: 如果本次combined为空，肯定没了。
+            if (combined.length === 0) {
+                this.hasMore = false;
+            } else {
+                this.page++;
+            }
             
             // 只有点击搜索按钮时才记录历史
-            if (saveHistory) {
+            if (saveHistory && !isLoadMore) {
                 this.addToHistory(kw);
             }
             
         } catch (e) {
             console.error(e);
+            if (!isLoadMore) this.searchResult = [];
         } finally {
             this.searching = false;
+            this.isLoadingMore = false;
         }
     },
     addToHistory(kw) {
@@ -310,10 +362,16 @@ export default {
         this.keyword = tag;
         this.doSearch(tag);
     },
-    goToDetail(id) {
-        uni.navigateTo({
-            url: `/pages/cigarette/detail?id=${id}`
-        });
+    goToDetail(item) {
+        if (item.type === 'wine') {
+             uni.navigateTo({
+                url: `/pages/wine/detail?id=${item._id}`
+            });
+        } else {
+            uni.navigateTo({
+                url: `/pages/cigarette/detail?id=${item._id}`
+            });
+        }
     },
     // 功能占位函数
     handleImport() {
@@ -325,7 +383,9 @@ export default {
       });
     },
     handleAddWine() {
-      uni.showToast({ title: '点击了添加酒水', icon: 'none' });
+      uni.navigateTo({
+        url: '/pages/wine/detail'
+      });
     },
     handleExportCigarette() {
       uni.showToast({ title: '点击了导出香烟', icon: 'none' });
@@ -600,6 +660,10 @@ $separator-color: #E5E5EA;
         
         &.tag-cigarette {
             background-color: #FF9500; // Orange for Cigarette
+        }
+        
+        &.tag-wine {
+            background-color: #AF52DE; // Purple for Wine
         }
     }
     

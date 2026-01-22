@@ -1,6 +1,12 @@
 {
 	"pages": [
 		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "烟酒管理系统"
+			}
+		},
+		{
 			"path": "pages/login/login",
 			"style": {
 				"navigationBarTitleText": "登录"
@@ -13,15 +19,15 @@
 			}
 		},
 		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "烟酒管理系统"
-			}
-		},
-		{
 			"path": "pages/cigarette/detail",
 			"style": {
 				"navigationBarTitleText": "香烟详情"
+			}
+		},
+		{
+			"path": "pages/wine/detail",
+			"style": {
+				"navigationBarTitleText": "酒水详情"
 			}
 		}
 	],

@@ -1,0 +1,40 @@
+{
+	"bsonType": "object",
+	"required": ["name"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"name": {
+			"bsonType": "string",
+			"description": "酒水名称",
+			"title": "酒水名称",
+            "trim": "both"
+		},
+		"image_url": {
+			"bsonType": "string",
+			"description": "图片地址",
+			"title": "图片"
+		},
+		"created_at": {
+			"bsonType": "timestamp",
+			"title": "创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+		},
+		"updated_at": {
+			"bsonType": "timestamp",
+			"title": "更新时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+		}
+	}
+}

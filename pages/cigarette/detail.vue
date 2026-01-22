@@ -5,12 +5,12 @@
       <image 
         v-if="formData.image_url" 
         :src="formData.image_url" 
-        mode="aspectFill" 
+        mode="aspectFit" 
         class="product-image"
       />
       <view v-else class="image-placeholder">
         <text class="camera-icon">📷</text>
-        <text class="placeholder-text">{{ isViewMode ? '暂无图片' : '点击拍摄图片 (3:4)' }}</text>
+        <text class="placeholder-text">{{ isViewMode ? '暂无图片' : '点击拍摄图片' }}</text>
       </view>
       <!-- Edit Overlay on top of image in Edit Mode -->
       <view v-if="!isViewMode && formData.image_url" class="edit-overlay">
@@ -422,21 +422,16 @@ $border-color: #E5E5EA;
     justify-content: center; /* Center horizontally */
     align-items: center;
     margin-bottom: 20rpx;
-    margin-top: 20rpx;
     
     .product-image {
         height: 100%;
-        aspect-ratio: 3/4; /* Ensure image itself is 3:4 */
-        width: auto; /* Let width adjust based on height */
-        object-fit: cover;
+        width: 100%;
         border-radius: 16rpx;
-        box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.1);
     }
     
     .image-placeholder {
         height: 100%;
-        aspect-ratio: 3/4;
-        width: auto;
+        width: 400rpx; /* Fixed width for placeholder to look good */
         background-color: #E1E1E5; /* Placeholder bg only for the image area */
         border-radius: 16rpx;
         display: flex;

@@ -144,8 +144,10 @@ module.exports = {
     /**
      * 搜索香烟
      * @param {String} keyword 
+     * @param {Number} skip 
+     * @param {Number} limit 
      */
-    async search(keyword) {
+    async search(keyword, skip = 0, limit = 20) {
         if (!keyword) return [];
         
         // 模糊查询: 名称 或 编码
@@ -155,7 +157,7 @@ module.exports = {
                 { name: regex },
                 { company_code: regex }
             ])
-        ).orderBy('updated_at', 'desc').limit(20).get();
+        ).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
         
         return res.data;
     }

@@ -1,0 +1,65 @@
+{
+	"bsonType": "object",
+	"required": ["wine_id", "purchase_date", "total_amount"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"wine_id": {
+			"bsonType": "string",
+			"description": "关联的酒水ID",
+			"title": "酒水ID"
+		},
+		"supplier": {
+			"bsonType": "string",
+			"description": "供货商",
+			"title": "供货商",
+            "trim": "both"
+		},
+		"purchase_date": {
+			"bsonType": "timestamp",
+			"description": "进货时间",
+			"title": "进货时间"
+		},
+		"box_num": {
+			"bsonType": "int",
+			"description": "箱数量",
+			"title": "箱数量"
+		},
+		"bottle_per_box": {
+			"bsonType": "int",
+			"description": "单箱瓶数",
+			"title": "单箱瓶数"
+		},
+		"price_per_bottle": {
+			"bsonType": "double",
+			"description": "单瓶价格",
+			"title": "单瓶价格"
+		},
+		"total_amount": {
+			"bsonType": "double",
+			"description": "总金额",
+			"title": "总金额"
+		},
+		"created_at": {
+			"bsonType": "timestamp",
+			"title": "创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+		},
+		"updated_at": {
+			"bsonType": "timestamp",
+			"title": "更新时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+		}
+	}
+}
