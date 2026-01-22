@@ -70,7 +70,10 @@ module.exports = {
 		const { username, password } = params;
 
 		if (!username || !password) {
-			throw new Error('用户名和密码不能为空');
+			return {
+				errCode: 1001,
+				errMsg: '用户名和密码不能为空'
+			};
 		}
 
 		// 1. 查询用户
@@ -79,14 +82,20 @@ module.exports = {
 		}).limit(1).get();
 
 		if (userResult.data.length === 0) {
-			throw new Error('用户不存在');
+			return {
+				errCode: 1002,
+				errMsg: '用户不存在'
+			};
 		}
 
 		const user = userResult.data[0];
 
 		// 2. 校验密码
 		if (hashPassword(password) !== user.password) {
-			throw new Error('密码错误');
+			return {
+				errCode: 1003,
+				errMsg: '密码错误'
+			};
 		}
 
 		// 3. 生成Token

@@ -1,0 +1,73 @@
+{
+	"bsonType": "object",
+	"required": ["company_code", "name", "wholesale_price"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"image_url": {
+			"bsonType": "string",
+			"description": "图片地址",
+			"title": "图片"
+		},
+		"company_code": {
+			"bsonType": "string",
+			"description": "公司编码",
+			"title": "公司编码",
+            "trim": "both"
+		},
+		"name": {
+			"bsonType": "string",
+			"description": "香烟名称",
+			"title": "香烟名称",
+            "trim": "both"
+		},
+		"wholesale_price": {
+			"bsonType": "double",
+			"description": "批发价",
+			"title": "批发价"
+		},
+        "wholesale_price_updated_at": {
+            "bsonType": "timestamp",
+            "description": "批发价更新时间"
+        },
+		"purchase_price": {
+			"bsonType": "double",
+			"description": "收货价",
+			"title": "收货价"
+		},
+        "purchase_price_updated_at": {
+            "bsonType": "timestamp",
+            "description": "收货价更新时间"
+        },
+		"retail_price": {
+			"bsonType": "double",
+			"description": "零售价",
+			"title": "零售价"
+		},
+        "retail_price_updated_at": {
+            "bsonType": "timestamp",
+            "description": "零售价更新时间"
+        },
+		"created_at": {
+			"bsonType": "timestamp",
+			"title": "创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+		},
+		"updated_at": {
+			"bsonType": "timestamp",
+			"title": "更新时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+		}
+	}
+}

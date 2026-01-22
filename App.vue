@@ -14,10 +14,12 @@
 		methods: {
 			checkLoginState() {
                 // 使用 setTimeout 确保 getCurrentPages 可以获取到路由栈
-                // 在 H5 刷新时，onShow 比页面加载早，所以需要短暂延时
                 setTimeout(() => {
+                    // 如果检查函数未定义，说明App可能未初始化完毕，不做处理，避免误判
+                    if (typeof uni.$checkLogin !== 'function') return;
+
                     // 使用 global 挂载的检测函数
-                    const isLogin = uni.$checkLogin ? uni.$checkLogin() : false
+                    const isLogin = uni.$checkLogin();
                     
                     const pages = getCurrentPages()
                     let currentPath = ''
@@ -40,14 +42,14 @@
                     } else {
                         // 情况2: 未登录 (或已过期)
                         // 如果当前页面不是白名单页面，强制回登录页
-                        // 如果 currentPath 为空，通常是App刚启动还没渲染完页面，或者默认就是首页(login)，暂时忽略
+                        // 修正：增加对 currentPath 的有效性检测，防止页面栈获取失败导致误跳
                         if (currentPath && !whiteList.includes(currentPath)) {
                              uni.reLaunch({
                                 url: '/pages/login/login'
                             })
                         }
                     }
-                }, 200) // 200ms 延时足够页面栈初始化
+                }, 200) 
 			}
 		}
 	}

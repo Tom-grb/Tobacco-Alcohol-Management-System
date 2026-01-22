@@ -17,6 +17,12 @@
 			"style": {
 				"navigationBarTitleText": "烟酒管理系统"
 			}
+		},
+		{
+			"path": "pages/cigarette/detail",
+			"style": {
+				"navigationBarTitleText": "香烟详情"
+			}
 		}
 	],
 	"globalStyle": {

@@ -94,15 +94,34 @@ const handleLogin = async () => {
           })
       }, 1500)
     } else {
-         // 处理可能的无token情况, 抛出异常由catch捕获
-         throw new Error(res.msg || '登录失败');
+         // 处理可能的无token情况, 主动抛出错误信息
+         throw new Error(res.msg || res.errMsg || '登录失败，请检查账号密码');
     }
 
   } catch (e) {
-    console.error(e);
+    console.error('Login error:', e);
+    // 提取云对象返回的错误信息
+    // 常见格式: "Error: [fzh-user]: 用户函数代码语法或逻辑异常 at pages/login/login.vue:102 ... Error: 密码错误"
+    // 或者 "Error: 密码错误"
+    let errorMsg = e.errMsg || e.message || '登录异常';
+    
+    // 尝试提取核心错误信息，比如 "Error: 密码错误"
+    // 很多时候云对象错误会被包装，最后一段通常是真实的业务错误
+    if (errorMsg.includes('Error: ')) {
+        const parts = errorMsg.split('Error: ');
+        if (parts.length > 1) {
+            // 取最后一部分
+            errorMsg = parts[parts.length - 1].trim();
+        }
+    }
+    
+    // 去除 [fzh-user] 等前缀
+    errorMsg = errorMsg.replace(/^\[.*?\]\s*/, '').replace('utilisateur function', '');
+
     uni.showToast({
-      title: e.errMsg || e.message || '登录失败，请重试',
-      icon: 'none'
+      title: errorMsg,
+      icon: 'none',
+      duration: 2000
     });
   } finally {
     loading.value = false;

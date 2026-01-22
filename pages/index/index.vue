@@ -5,9 +5,16 @@
       <!-- 只有在非搜索模式下才显示的大标题 -->
       <view class="header-title-bar" :style="{ opacity: isSearchMode ? 0 : 1, height: isSearchMode ? '0px' : 'auto' }">
         <text class="large-title">工作台</text>
-        <view class="user-profile">
-            <!-- 模拟头像 -->
-            <view class="avatar-circle">A</view>
+        <view class="user-profile-wrapper">
+             <!-- 退出按钮 -->
+             <view class="logout-btn" :class="{ 'show': showLogout }" @click.stop="handleLogout">
+                 <text>退出</text>
+             </view>
+             
+             <view class="user-profile" @click.stop="toggleLogout">
+                <!-- 模拟头像 -->
+                <view class="avatar-circle">丰</view>
+            </view>
         </view>
       </view>
 
@@ -20,7 +27,10 @@
             type="text" 
             placeholder="搜索香烟或酒水" 
             placeholder-class="placeholder-text"
+            confirm-type="search"
             @focus="enterSearchMode"
+            @input="onInput"
+            @confirm="onConfirm"
             v-model="keyword"
           />
         </view>
@@ -32,8 +42,60 @@
 
     <!-- 搜索模式下的覆盖层 -->
     <view class="search-overlay" v-if="isSearchMode">
-        <view class="empty-search-state">
-            <text class="empty-text">输入关键词开始搜索...</text>
+        
+        <!-- 搜索历史 (当没有输入内容且有历史记录时显示) -->
+        <view class="history-section" v-if="!keyword && historyList.length > 0">
+            <view class="section-header-row">
+                <text class="section-subtitle">历史搜索</text>
+                <text class="trash-icon" @click="clearHistory">🗑️</text>
+            </view>
+            <view class="history-tags">
+                <view 
+                    class="tag" 
+                    v-for="(item, index) in historyList" 
+                    :key="index"
+                    @click="onHistoryTagClick(item)"
+                >
+                    {{ item }}
+                </view>
+            </view>
+        </view>
+
+        <!-- 搜索结果列表 -->
+        <scroll-view scroll-y class="result-list" v-if="keyword">
+            <view 
+                class="result-item" 
+                v-for="item in searchResult" 
+                :key="item._id"
+                @click="goToDetail(item._id)"
+            >
+                <!-- 左侧标签 -->
+                <view class="category-tag tag-cigarette">
+                    <text>烟</text>
+                </view>
+                
+                <!-- 中间信息 -->
+                <view class="item-info">
+                    <text class="item-name">{{ item.name }}</text>
+                    <text class="item-code">{{ item.company_code }}</text>
+                </view>
+                
+                <!-- 右侧价格 -->
+                <view class="item-price">
+                    <text class="price-label">批发价</text>
+                    <text class="price-value">¥{{ item.wholesale_price }}</text>
+                </view>
+            </view>
+            
+            <!-- 空状态 -->
+            <view class="empty-search-state" v-if="searchResult.length === 0 && !searching">
+                <text class="empty-text">未找到相关商品</text>
+            </view>
+        </scroll-view>
+
+        <!-- 初始空状态提示 (仅当无历史且无输入时) -->
+        <view class="empty-search-state" v-if="!keyword && historyList.length === 0">
+            <text class="empty-text">输入关键词搜索商品</text>
         </view>
     </view>
 
@@ -65,7 +127,7 @@
             <text class="emoji-large">🚬</text>
           </view>
           <text class="grid-title">添加香烟</text>
-          <text class="grid-desc">库存入录</text>
+          <text class="grid-desc">品类管理</text>
         </view>
 
         <view class="grid-card" hover-class="card-hover" @click="handleAddWine">
@@ -116,28 +178,151 @@ export default {
   data() {
     return {
       isSearchMode: false,
-      keyword: ''
+      keyword: '',
+      showLogout: false,
+      historyList: [],
+      searchResult: [],
+      searching: false,
+      searchTimer: null
     };
   },
+  onLoad() {
+      // 加载搜索历史
+      const history = uni.getStorageSync('search_history');
+      if (history) {
+          this.historyList = JSON.parse(history);
+      }
+  },
+  onShow() {
+      // 如果处于搜索模式且有关键词，每次显示页面时刷新搜索结果
+      // 这里的场景主要是：用户点击某个商品进入详情页，进行了编辑或删除操作，返回来时需要更新列表
+      if (this.isSearchMode && this.keyword) {
+          this.doSearch(this.keyword, false);
+      }
+  },
   methods: {
+    toggleLogout() {
+        this.showLogout = !this.showLogout;
+    },
+    handleLogout() {
+        uni.showModal({
+            title: '提示',
+            content: '确定要退出登录吗？',
+            success: (res) => {
+                if (res.confirm) {
+                    // 清理缓存
+                    uni.removeStorageSync('uni_id_token');
+                    uni.removeStorageSync('userInfo');
+                    uni.removeStorageSync('login_expired');
+                    
+                    // 重置状态
+                    this.showLogout = false;
+                    
+                    // 跳转回登录页
+                    uni.reLaunch({
+                        url: '/pages/login/login'
+                    });
+                }
+            }
+        });
+    },
     enterSearchMode() {
       this.isSearchMode = true;
+      this.showLogout = false; // 进入搜索模式时隐藏退出按钮
       // 可以在这里隐藏tabbar，视觉效果更好
       uni.hideTabBar();
     },
     exitSearchMode() {
       this.isSearchMode = false;
       this.keyword = '';
+      this.searchResult = [];
       uni.showTabBar();
       // 收起键盘
       uni.hideKeyboard();
+    },
+    onInput(e) {
+        const val = e.detail.value;
+        this.keyword = val;
+        
+        if (!val) {
+            this.searchResult = [];
+            return;
+        }
+        
+        // 防抖搜索 (不存历史)
+        if (this.searchTimer) clearTimeout(this.searchTimer);
+        this.searchTimer = setTimeout(() => {
+            this.doSearch(val, false);
+        }, 500);
+    },
+    onConfirm(e) {
+        const val = this.keyword;
+        if(val) {
+           this.doSearch(val, true);
+        }
+    },
+    async doSearch(kw, saveHistory = false) {
+        if (!kw) return;
+        this.searching = true;
+        try {
+            const fzhCigarette = uniCloud.importObject('fzh-cigarette');
+            const res = await fzhCigarette.search(kw);
+            this.searchResult = res || [];
+            
+            // 只有点击搜索按钮时才记录历史
+            if (saveHistory) {
+                this.addToHistory(kw);
+            }
+            
+        } catch (e) {
+            console.error(e);
+        } finally {
+            this.searching = false;
+        }
+    },
+    addToHistory(kw) {
+        // 移除已存在的
+        const idx = this.historyList.indexOf(kw);
+        if (idx > -1) {
+            this.historyList.splice(idx, 1);
+        }
+        // 插入头部
+        this.historyList.unshift(kw);
+        // 限制长度
+        if (this.historyList.length > 10) {
+            this.historyList.pop();
+        }
+        uni.setStorageSync('search_history', JSON.stringify(this.historyList));
+    },
+    clearHistory() {
+        uni.showModal({
+            title: '提示',
+            content: '确定清空搜索历史吗？',
+            success: (res) => {
+                if (res.confirm) {
+                    this.historyList = [];
+                    uni.removeStorageSync('search_history');
+                }
+            }
+        });
+    },
+    onHistoryTagClick(tag) {
+        this.keyword = tag;
+        this.doSearch(tag);
+    },
+    goToDetail(id) {
+        uni.navigateTo({
+            url: `/pages/cigarette/detail?id=${id}`
+        });
     },
     // 功能占位函数
     handleImport() {
       uni.showToast({ title: '点击了导入单据', icon: 'none' });
     },
     handleAddCigarette() {
-      uni.showToast({ title: '点击了添加香烟', icon: 'none' });
+      uni.navigateTo({
+        url: '/pages/cigarette/detail'
+      });
     },
     handleAddWine() {
       uni.showToast({ title: '点击了添加酒水', icon: 'none' });
@@ -216,6 +401,46 @@ $separator-color: #E5E5EA;
   }
 }
 
+.user-profile-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.logout-btn {
+    position: absolute;
+    right: 110%; /* 头像左侧 */
+    background-color: #FF3B30;
+    color: white;
+    padding: 10rpx 24rpx;
+    border-radius: 12rpx;
+    font-size: 26rpx;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(20rpx);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 4rpx 12rpx rgba(255, 59, 48, 0.2);
+    
+    &.show {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+    
+    /* 小三角指示 */
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -8rpx;
+        transform: translateY(-50%);
+        border-width: 8rpx 0 8rpx 8rpx;
+        border-style: solid;
+        border-color: transparent transparent transparent #FF3B30;
+    }
+}
+
 .search-bar-container {
   display: flex;
   align-items: center;
@@ -283,12 +508,140 @@ $separator-color: #E5E5EA;
     flex: 1;
     background-color: $bg-color;
     display: flex;
-    justify-content: center;
-    padding-top: 100rpx;
+    flex-direction: column; /* Use column layout */
+    justify-content: flex-start; /* Start from top */
+    padding-top: 20rpx;
     
-    .empty-text {
-        color: $text-secondary;
-        font-size: 32rpx;
+    .empty-search-state {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        .empty-text {
+            color: $text-secondary;
+            font-size: 32rpx;
+        }
+    }
+}
+
+/* History Section */
+.history-section {
+    width: 100%;
+    padding: 0 32rpx;
+    margin-bottom: 40rpx;
+    box-sizing: border-box;
+    
+    .section-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24rpx;
+        
+        .section-subtitle {
+            font-size: 30rpx;
+            font-weight: 600;
+            color: $text-primary;
+        }
+        
+        .trash-icon {
+            font-size: 36rpx;
+            padding: 10rpx;
+            color: $text-secondary;
+        }
+    }
+    
+    .history-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20rpx;
+        
+        .tag {
+            background-color: #F2F2F7; // Slightly darker than white
+            color: $text-primary;
+            padding: 12rpx 28rpx;
+            border-radius: 30rpx;
+            font-size: 28rpx;
+            display: inline-block;
+        }
+    }
+}
+
+/* Result List */
+.result-list {
+    flex: 1;
+    width: 100%;
+    height: 100%; // Fill available space
+    background-color: $bg-color;
+}
+
+.result-item {
+    background-color: $card-bg;
+    padding: 24rpx 32rpx;
+    margin-bottom: 2rpx; /* Slight separator */
+    display: flex;
+    align-items: center;
+    
+    &:active {
+        background-color: #E5E5EA;
+    }
+    
+    .category-tag {
+        width: 60rpx; // Square-ish or rounded rect
+        height: 60rpx;
+        border-radius: 12rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 24rpx;
+        font-size: 26rpx;
+        font-weight: bold;
+        color: #fff;
+        
+        &.tag-cigarette {
+            background-color: #FF9500; // Orange for Cigarette
+        }
+    }
+    
+    .item-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+        
+        .item-name {
+            font-size: 32rpx;
+            font-weight: 500;
+            color: $text-primary;
+            margin-bottom: 6rpx;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .item-code {
+            font-size: 24rpx;
+            color: $text-secondary;
+        }
+    }
+    
+    .item-price {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        
+        .price-label {
+            font-size: 20rpx;
+            color: $text-secondary;
+            margin-bottom: 4rpx;
+        }
+        
+        .price-value {
+            font-size: 32rpx;
+            font-weight: 600;
+            color: $theme-blue;
+        }
     }
 }
 
