@@ -112,7 +112,7 @@
             <text class="card-title">导入烟草单据</text>
             <text class="card-subtitle">支持图片识别与文件导入</text>
           </view>
-          <view class="arrow-icon">></view>
+          <view class="arrow-icon">›</view>
         </view>
       </view>
 
@@ -152,7 +152,7 @@
             </view>
             <text class="item-title">导出香烟数据</text>
           </view>
-          <text class="list-arrow">></text>
+          <text class="list-arrow">›</text>
         </view>
         
         <view class="divider"></view>
@@ -164,7 +164,7 @@
             </view>
             <text class="item-title">导出酒水数据</text>
           </view>
-          <text class="list-arrow">></text>
+          <text class="list-arrow">›</text>
         </view>
       </view>
       
@@ -375,7 +375,10 @@ export default {
     },
     // 功能占位函数
     handleImport() {
-      uni.showToast({ title: '点击了导入单据', icon: 'none' });
+      // uni.showToast({ title: '点击了导入单据', icon: 'none' });
+      uni.navigateTo({
+          url: '/pages/cigarette/import'
+      });
     },
     handleAddCigarette() {
       uni.navigateTo({

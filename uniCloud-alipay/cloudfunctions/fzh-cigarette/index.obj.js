@@ -142,8 +142,127 @@ module.exports = {
     },
 
     /**
+     * 批量导入
+     * @param {Array} items [{ company_code, name, wholesale_price, manufacturer }]
+     */
+    async batchImport(items) {
+        if (!items || items.length === 0) return { total: 0, updated: 0, added: 0, logs: [] };
+
+        const logs = [];
+        let added = 0;
+        let updated = 0;
+        const now = Date.now();
+
+        // 1. 收集所有 Company Codes
+        const codes = items.map(i => String(i.company_code).trim()).filter(c => c);
+        if (codes.length === 0) return { total: 0, updated: 0, added: 0, logs: [], msg: '有效数据为空' };
+
+        // 2. 分批查询现有数据
+        const existingMap = new Map();
+        const CHUNK_SIZE = 100;
+        for (let i = 0; i < codes.length; i += CHUNK_SIZE) {
+             const chunk = codes.slice(i, i + CHUNK_SIZE);
+             if (chunk.length === 0) continue;
+             const { data } = await db.collection('fzh_cigarette')
+                .where({
+                    company_code: dbCmd.in(chunk)
+                })
+                .limit(1000)
+                .get();
+             data.forEach(item => {
+                 existingMap.set(item.company_code, item);
+             });
+        }
+
+        // 3. 遍历处理
+        for (const item of items) {
+            const code = String(item.company_code).trim();
+            const name = String(item.name || '').trim();
+            const manufacturer = String(item.manufacturer || '').trim(); 
+            const price = parseFloat(item.wholesale_price);
+            
+            if (!code || !name || isNaN(price)) continue;
+
+            const existing = existingMap.get(code);
+            
+            if (existing) {
+                // Check for updates
+                let hasChange = false;
+                let priceChange = 0; // 0: none, 1: up, -1: down
+                let oldPrice = existing.wholesale_price;
+                
+                const updateData = { updated_at: now };
+                
+                // 价格变动
+                if (existing.wholesale_price !== price) {
+                    hasChange = true;
+                    if (price > existing.wholesale_price) priceChange = 1;
+                    else priceChange = -1;
+                    
+                    updateData.wholesale_price = price;
+                    updateData.wholesale_price_updated_at = now;
+                    
+                    logs.push({
+                         type: 'update',
+                         name: name,
+                         code: code,
+                         old_price: oldPrice,
+                         new_price: price,
+                         change: priceChange
+                    });
+                }
+                
+                if (manufacturer && existing.manufacturer !== manufacturer) {
+                     hasChange = true;
+                     updateData.manufacturer = manufacturer;
+                }
+                
+                if (name && existing.name !== name) {
+                     hasChange = true;
+                     updateData.name = name;
+                }
+
+                if (hasChange) {
+                    updated++;
+                    await db.collection('fzh_cigarette').doc(existing._id).update(updateData);
+                }
+
+            } else {
+                // Add new
+                const newData = {
+                    company_code: code,
+                    name: name,
+                    manufacturer: manufacturer,
+                    wholesale_price: price,
+                    wholesale_price_updated_at: now,
+                    purchase_price: 0,
+                    retail_price: 0,
+                    created_at: now,
+                    updated_at: now
+                };
+                await db.collection('fzh_cigarette').add(newData);
+                added++;
+                logs.push({
+                    type: 'add',
+                    name: name,
+                    code: code,
+                    new_price: price
+                });
+            }
+        }
+
+        return {
+            total: items.length,
+            updated,
+            added,
+            logs
+        };
+    },
+
+    /**
      * 搜索香烟
      * @param {String} keyword 
+ 
      * @param {Number} skip 
      * @param {Number} limit 
      */

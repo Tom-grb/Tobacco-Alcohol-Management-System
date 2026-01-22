@@ -25,6 +25,12 @@
 			}
 		},
 		{
+			"path": "pages/cigarette/import",
+			"style": {
+				"navigationBarTitleText": "导入单据"
+			}
+		},
+		{
 			"path": "pages/wine/detail",
 			"style": {
 				"navigationBarTitleText": "酒水详情"

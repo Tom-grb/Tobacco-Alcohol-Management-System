@@ -28,6 +28,12 @@
 			"title": "香烟名称",
             "trim": "both"
 		},
+        "manufacturer": {
+            "bsonType": "string",
+            "description": "厂家名称",
+            "title": "厂家名称",
+            "trim": "both"
+        },
 		"wholesale_price": {
 			"bsonType": "double",
 			"description": "批发价",
