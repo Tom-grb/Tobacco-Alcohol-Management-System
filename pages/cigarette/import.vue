@@ -231,15 +231,11 @@ export default {
             const header = rows[0].map(val => String(val || '').trim());
             console.log('Header Row:', header);
 
-            // 2. 查找关键列索引
-            const findColIndex = (keywords) => {
-                return header.findIndex(h => keywords.some(k => h.indexOf(k) > -1));
-            };
-
-            const idxCode = findColIndex(['商品编码', '编码', '编号']);
-            const idxName = findColIndex(['商品', '名称', '品名']);
-            const idxPrice = findColIndex(['批发价', '批发']);
-            const idxManufacturer = findColIndex(['厂家名称', '厂家']);
+            // 2. 查找关键列索引 (统一使用严格正则匹配)
+            const idxCode = header.findIndex(h => /^(商品编码)$/.test(h));
+            const idxName = header.findIndex(h => /^(商品)$/.test(h));
+            const idxPrice = header.findIndex(h => /^(批发价)$/.test(h));
+            const idxManufacturer = header.findIndex(h => /^(厂家名称)$/.test(h));
 
             if (idxCode === -1 || idxName === -1 || idxPrice === -1) {
                 let missing = [];
