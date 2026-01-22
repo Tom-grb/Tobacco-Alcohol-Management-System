@@ -94,5 +94,18 @@ module.exports = {
             name: regex
         }).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
         return res.data;
+    },
+
+    async count() {
+        const res = await db.collection('fzh_wine').count();
+        return res.total;
+    },
+
+    async getAll() {
+        const res = await db.collection('fzh_wine')
+            .field({ name: 1, company_code: 1, wholesale_price: 1 })
+            .limit(1000)
+            .get();
+        return res.data;
     }
 }

@@ -100,7 +100,7 @@
     </view>
 
     <!-- 主展示区域 -->
-    <scroll-view scroll-y class="main-content" v-else>
+    <view  class="main-content" v-else>
       
       <!-- 核心功能卡片 (导入) -->
       <view class="card-group">
@@ -116,28 +116,34 @@
         </view>
       </view>
 
-      <!-- Grid 功能区 (添加商品) -->
+      <!-- 库存概览 -->
       <view class="section-header">
-        <text class="section-title">商品管理</text>
+        <text class="section-title">库存概览</text>
       </view>
       
       <view class="grid-group">
-        <view class="grid-card" hover-class="card-hover" @click="handleAddCigarette">
+        <view class="grid-card" hover-class="card-hover" @click="goToList('cigarette')">
           <view class="grid-icon-box bg-orange">
             <text class="emoji-large">🚬</text>
           </view>
-          <text class="grid-title">添加香烟</text>
-          <text class="grid-desc">品类管理</text>
+          <view class="grid-text-content">
+              <text class="grid-title">香烟列表</text>
+              <text class="grid-desc">共 {{counts.cigarette}} 种</text>
+          </view>
         </view>
 
-        <view class="grid-card" hover-class="card-hover" @click="handleAddWine">
+        <view class="grid-card" hover-class="card-hover" @click="goToList('wine')">
           <view class="grid-icon-box bg-purple">
             <text class="emoji-large">🍷</text>
           </view>
-          <text class="grid-title">添加酒水</text>
-          <text class="grid-desc">品类管理</text>
+          <view class="grid-text-content">
+            <text class="grid-title">酒水列表</text>
+            <text class="grid-desc">共 {{counts.wine}} 种</text>
+          </view>
         </view>
       </view>
+
+     
 
       <!-- 列表功能区 (导出数据) -->
       <view class="section-header">
@@ -167,9 +173,35 @@
           <text class="list-arrow">›</text>
         </view>
       </view>
+
+	   <!-- Grid 功能区 (添加商品) -->
+      <view class="section-header">
+        <text class="section-title">商品管理</text>
+      </view>
+      <view class="grid-group">
+        <view class="grid-card" hover-class="card-hover" @click="handleAddCigarette">
+          <view class="grid-icon-box bg-orange">
+            <text class="emoji-large">🚬</text>
+          </view>
+          <view class="grid-text-content">
+            <text class="grid-title">添加香烟</text>
+            <text class="grid-desc">品类管理</text>
+          </view>
+        </view>
+
+        <view class="grid-card" hover-class="card-hover" @click="handleAddWine">
+          <view class="grid-icon-box bg-purple">
+            <text class="emoji-large">🍷</text>
+          </view>
+          <view class="grid-text-content">
+            <text class="grid-title">添加酒水</text>
+            <text class="grid-desc">品类管理</text>
+          </view>
+        </view>
+      </view>
       
       <view class="bottom-spacer"></view>
-    </scroll-view>
+    </view>
   </view>
 </template>
 
@@ -187,7 +219,8 @@ export default {
       page: 1,
       pageSize: 20,
       hasMore: true,
-      isLoadingMore: false
+      isLoadingMore: false,
+      counts: { cigarette: 0, wine: 0 }
     };
   },
   onLoad() {
@@ -198,6 +231,7 @@ export default {
       }
   },
   onShow() {
+      this.fetchCounts();
       // 如果处于搜索模式且有关键词，每次显示页面时刷新搜索结果
       // 这里的场景主要是：用户点击某个商品进入详情页，进行了编辑或删除操作，返回来时需要更新列表
       if (this.isSearchMode && this.keyword) {
@@ -210,6 +244,22 @@ export default {
       }
   },
   methods: {
+    async fetchCounts() {
+        try {
+            const fzhCigarette = uniCloud.importObject('fzh-cigarette');
+            const fzhWine = uniCloud.importObject('fzh-wine');
+            const [c, w] = await Promise.all([
+                fzhCigarette.count().catch(() => 0),
+                fzhWine.count().catch(() => 0)
+            ]);
+            this.counts = { cigarette: c, wine: w };
+        } catch (e) {
+            console.error('Fetch counts error', e);
+        }
+    },
+    goToList(type) {
+        uni.navigateTo({ url: `/pages/common/list?type=${type}` });
+    },
     toggleLogout() {
         this.showLogout = !this.showLogout;
     },
@@ -402,8 +452,8 @@ export default {
 
 <style lang="scss" scoped>
 /* 
-  Apple Style Design System 
-  Designed for readability, touch targets, and smooth motion.
+  Apple Style Design System (Compact Version)
+  Designed for single-screen view without scrolling
 */
 
 $bg-color: #F2F2F7;
@@ -414,7 +464,8 @@ $theme-blue: #007AFF;
 $separator-color: #E5E5EA;
 
 .page-container {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden; /* Prevent body scroll */
   background-color: $bg-color;
   display: flex;
   flex-direction: column;
@@ -424,15 +475,14 @@ $separator-color: #E5E5EA;
 .sticky-header {
   background-color: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
-  position: sticky;
-  top: 0;
   z-index: 100;
-  padding: 0 32rpx 20rpx;
+  padding: 0 32rpx 16rpx; /* Reduced padding */
   border-bottom: 0.5px solid rgba(0,0,0,0);
   transition: all 0.3s ease;
   
   &.search-active {
-     background-color: $bg-color; // 搜索模式下可以全屏白或者灰色
+     background-color: $bg-color;
+     flex: 1; /* Expand in search mode */
   }
 }
 
@@ -440,20 +490,20 @@ $separator-color: #E5E5EA;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20rpx 0;
+  padding: 10rpx 0 16rpx; /* Compressed */
   overflow: hidden;
   transition: all 0.3s ease;
   
   .large-title {
-    font-size: 68rpx;
+    font-size: 48rpx; /* 68->48 Compact Title */
     font-weight: 800;
     color: $text-primary;
-    letter-spacing: -1px;
+    letter-spacing: -0.5px;
   }
   
   .avatar-circle {
-      width: 72rpx;
-      height: 72rpx;
+      width: 64rpx; /* 72->64 */
+      height: 64rpx;
       background-color: #E5E5EA;
       border-radius: 50%;
       display: flex;
@@ -461,6 +511,7 @@ $separator-color: #E5E5EA;
       justify-content: center;
       font-weight: 600;
       color: $text-secondary;
+      font-size: 28rpx;
   }
 }
 
@@ -472,12 +523,12 @@ $separator-color: #E5E5EA;
 
 .logout-btn {
     position: absolute;
-    right: 110%; /* 头像左侧 */
+    right: 110%; 
     background-color: #FF3B30;
     color: white;
-    padding: 10rpx 24rpx;
-    border-radius: 12rpx;
-    font-size: 26rpx;
+    padding: 8rpx 20rpx;
+    border-radius: 10rpx;
+    font-size: 24rpx;
     white-space: nowrap;
     opacity: 0;
     transform: translateX(20rpx);
@@ -491,7 +542,6 @@ $separator-color: #E5E5EA;
         pointer-events: auto;
     }
     
-    /* 小三角指示 */
     &::after {
         content: '';
         position: absolute;
@@ -514,22 +564,22 @@ $separator-color: #E5E5EA;
 .search-input-wrapper {
   flex: 1;
   background-color: rgba(118, 118, 128, 0.12);
-  height: 72rpx;
-  border-radius: 20rpx;
+  height: 68rpx; /* 72->68 */
+  border-radius: 18rpx;
   display: flex;
   align-items: center;
   padding: 0 20rpx;
   transition: all 0.3s ease;
   
   .search-icon {
-    font-size: 32rpx;
+    font-size: 30rpx;
     margin-right: 12rpx;
     opacity: 0.5;
   }
   
   .search-input {
     flex: 1;
-    font-size: 34rpx;
+    font-size: 30rpx;
     height: 100%;
     color: $text-primary;
   }
@@ -540,15 +590,15 @@ $separator-color: #E5E5EA;
 }
 
 .cancel-btn {
-  font-size: 34rpx;
+  font-size: 32rpx;
   color: $theme-blue;
   margin-left: 20rpx;
   white-space: nowrap;
   opacity: 0;
   transform: translateX(20rpx);
-  pointer-events: none; // hidden state
+  pointer-events: none; 
   transition: all 0.3s ease;
-  display: none; // hide from layout flow initially
+  display: none; 
 }
 
 /* Search Mode Active State */
@@ -571,8 +621,8 @@ $separator-color: #E5E5EA;
     flex: 1;
     background-color: $bg-color;
     display: flex;
-    flex-direction: column; /* Use column layout */
-    justify-content: flex-start; /* Start from top */
+    flex-direction: column; 
+    justify-content: flex-start;
     padding-top: 20rpx;
     
     .empty-search-state {
@@ -583,7 +633,7 @@ $separator-color: #E5E5EA;
         
         .empty-text {
             color: $text-secondary;
-            font-size: 32rpx;
+            font-size: 30rpx;
         }
     }
 }
@@ -592,23 +642,23 @@ $separator-color: #E5E5EA;
 .history-section {
     width: 100%;
     padding: 0 32rpx;
-    margin-bottom: 40rpx;
+    margin-bottom: 30rpx;
     box-sizing: border-box;
     
     .section-header-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24rpx;
+        margin-bottom: 20rpx;
         
         .section-subtitle {
-            font-size: 30rpx;
+            font-size: 28rpx;
             font-weight: 600;
             color: $text-primary;
         }
         
         .trash-icon {
-            font-size: 36rpx;
+            font-size: 32rpx;
             padding: 10rpx;
             color: $text-secondary;
         }
@@ -617,14 +667,14 @@ $separator-color: #E5E5EA;
     .history-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 20rpx;
+        gap: 16rpx;
         
         .tag {
-            background-color: #F2F2F7; // Slightly darker than white
+            background-color: #F2F2F7;
             color: $text-primary;
-            padding: 12rpx 28rpx;
-            border-radius: 30rpx;
-            font-size: 28rpx;
+            padding: 10rpx 24rpx;
+            border-radius: 24rpx;
+            font-size: 26rpx;
             display: inline-block;
         }
     }
@@ -634,14 +684,14 @@ $separator-color: #E5E5EA;
 .result-list {
     flex: 1;
     width: 100%;
-    height: 100%; // Fill available space
+    height: 100%; 
     background-color: $bg-color;
 }
 
 .result-item {
     background-color: $card-bg;
-    padding: 24rpx 32rpx;
-    margin-bottom: 2rpx; /* Slight separator */
+    padding: 20rpx 32rpx;
+    margin-bottom: 1px;
     display: flex;
     align-items: center;
     
@@ -650,24 +700,19 @@ $separator-color: #E5E5EA;
     }
     
     .category-tag {
-        width: 60rpx; // Square-ish or rounded rect
-        height: 60rpx;
-        border-radius: 12rpx;
+        width: 50rpx;
+        height: 50rpx;
+        border-radius: 10rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 24rpx;
-        font-size: 26rpx;
+        margin-right: 20rpx;
+        font-size: 24rpx;
         font-weight: bold;
         color: #fff;
         
-        &.tag-cigarette {
-            background-color: #FF9500; // Orange for Cigarette
-        }
-        
-        &.tag-wine {
-            background-color: #AF52DE; // Purple for Wine
-        }
+        &.tag-cigarette { background-color: #FF9500; }
+        &.tag-wine { background-color: #AF52DE; }
     }
     
     .item-info {
@@ -678,17 +723,17 @@ $separator-color: #E5E5EA;
         overflow: hidden;
         
         .item-name {
-            font-size: 32rpx;
+            font-size: 30rpx;
             font-weight: 500;
             color: $text-primary;
-            margin-bottom: 6rpx;
+            margin-bottom: 4rpx;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         
         .item-code {
-            font-size: 24rpx;
+            font-size: 22rpx;
             color: $text-secondary;
         }
     }
@@ -699,13 +744,13 @@ $separator-color: #E5E5EA;
         align-items: flex-end;
         
         .price-label {
-            font-size: 20rpx;
+            font-size: 18rpx;
             color: $text-secondary;
-            margin-bottom: 4rpx;
+            margin-bottom: 2rpx;
         }
         
         .price-value {
-            font-size: 32rpx;
+            font-size: 30rpx;
             font-weight: 600;
             color: $theme-blue;
         }
@@ -715,50 +760,57 @@ $separator-color: #E5E5EA;
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: 20rpx 32rpx;
+  padding: 24rpx 32rpx;
   box-sizing: border-box;
+  // overflow-y: auto; // Remove explicit scroll if content fits
+  display: flex;
+  flex-direction: column;
 }
 
 /* Common Card Styles */
 .section-header {
-    margin-top: 48rpx;
-    margin-bottom: 16rpx;
-    padding-left: 10rpx;
+    margin-top: 24rpx; /* Compact spacing */
+    margin-bottom: 12rpx;
+    padding-left: 8rpx;
     
     .section-title {
-        font-size: 40rpx;
+        font-size: 30rpx; /* Smaller title */
         font-weight: 700;
         color: $text-primary;
     }
 }
 
 .card-group, .grid-group, .list-group {
-    margin-bottom: 20rpx;
+    margin-bottom: 16rpx;
 }
 
 /* Action Card (Import) */
 .action-card {
     background-color: $card-bg;
-    border-radius: 24rpx;
-    padding: 32rpx;
+    border-radius: 20rpx;
+    padding: 24rpx; /* Smaller Card */
     display: flex;
     align-items: center;
-    box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.04);
+    box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+    
+    /* Slightly taller to anchor the page */
+    padding-top: 32rpx;
+    padding-bottom: 32rpx;
 }
 
 .card-icon-bg {
-    width: 96rpx;
-    height: 96rpx;
-    border-radius: 20rpx;
+    width: 80rpx; /* 96->80 */
+    height: 80rpx;
+    border-radius: 16rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 24rpx;
+    margin-right: 20rpx;
     
     &.icon-blue { background-color: rgba(0, 122, 255, 0.1); color: #007AFF; }
     
     .emoji-icon {
-        font-size: 48rpx;
+        font-size: 40rpx; /* 48->40 */
     }
 }
 
@@ -768,22 +820,22 @@ $separator-color: #E5E5EA;
     flex-direction: column;
     
     .card-title {
-        font-size: 34rpx;
+        font-size: 30rpx;
         font-weight: 600;
         color: $text-primary;
-        margin-bottom: 8rpx;
+        margin-bottom: 6rpx;
     }
     
     .card-subtitle {
-        font-size: 26rpx;
+        font-size: 22rpx;
         color: $text-secondary;
     }
 }
 
 .arrow-icon, .list-arrow {
-    font-size: 36rpx;
+    font-size: 32rpx;
     color: #C7C7CC;
-    font-family: monospace; // 简单模拟箭头
+    font-family: monospace; 
     font-weight: bold;
 }
 
@@ -795,53 +847,66 @@ $separator-color: #E5E5EA;
 
 .grid-card {
     background-color: $card-bg;
-    width: 48%; /* 2 column */
-    border-radius: 24rpx;
-    padding: 32rpx 24rpx;
+    width: 48.5%; 
+    border-radius: 20rpx;
+    padding: 24rpx 20rpx;
     box-sizing: border-box;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start; // 左对齐更现代
-    box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.04);
+    flex-direction: row; /* Change to row */
+    align-items: center; /* Center vertically */
+    box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
     
     .grid-icon-box {
-        width: 80rpx;
-        height: 80rpx;
-        border-radius: 18rpx;
+        width: 64rpx; 
+        height: 64rpx;
+        border-radius: 14rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 24rpx;
+        margin-bottom: 0; /* Remove bottom margin */
+        margin-right: 16rpx; /* Add right margin */
+        flex-shrink: 0; /* Prevent shrinking */
         
         &.bg-orange { background-color: rgba(255, 149, 0, 0.1); }
         &.bg-purple { background-color: rgba(175, 82, 222, 0.1); }
         
-        .emoji-large { font-size: 40rpx; }
+        .emoji-large { font-size: 32rpx; }
+    }
+
+    /* Wrap text in a container for vertical stacking within the row */
+    .grid-text-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
     }
     
     .grid-title {
-        font-size: 32rpx;
+        font-size: 28rpx;
         font-weight: 600;
         color: $text-primary;
-        margin-bottom: 6rpx;
+        margin-bottom: 2rpx;
+        white-space: nowrap;
     }
     
     .grid-desc {
-        font-size: 24rpx;
+        font-size: 22rpx;
         color: $text-secondary;
+        white-space: nowrap;
     }
 }
 
 /* List Group */
 .list-group {
     background-color: $card-bg;
-    border-radius: 24rpx;
-    overflow: hidden; // for corner clipping
-    box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.04);
+    border-radius: 20rpx;
+    overflow: hidden; 
+    box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+/* Assign remaining space if any, or just sit there */
 }
 
 .list-item {
-    padding: 32rpx;
+    padding: 24rpx 32rpx;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -852,22 +917,22 @@ $separator-color: #E5E5EA;
     }
     
     .small-icon-box {
-        width: 60rpx;
-        height: 60rpx;
-        border-radius: 14rpx;
+        width: 56rpx;
+        height: 56rpx;
+        border-radius: 12rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 24rpx;
+        margin-right: 20rpx;
         
         &.bg-green { background-color: rgba(52, 199, 89, 0.1); }
         &.bg-indigo { background-color: rgba(88, 86, 214, 0.1); }
         
-        .emoji-small { font-size: 32rpx; }
+        .emoji-small { font-size: 28rpx; }
     }
     
     .item-title {
-        font-size: 32rpx;
+        font-size: 28rpx;
         color: $text-primary;
         font-weight: 500;
     }
@@ -876,7 +941,7 @@ $separator-color: #E5E5EA;
 .divider {
     height: 1px;
     background-color: $separator-color;
-    margin-left: 116rpx; // align with text start
+    margin-left: 108rpx; 
 }
 
 .card-hover, .list-hover {
@@ -885,6 +950,6 @@ $separator-color: #E5E5EA;
 }
 
 .bottom-spacer {
-    height: 100rpx;
+    display: none; /* No spacer needed for compact fixed layout */
 }
 </style>

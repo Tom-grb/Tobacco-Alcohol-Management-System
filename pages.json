@@ -35,6 +35,12 @@
 			"style": {
 				"navigationBarTitleText": "酒水详情"
 			}
+		},
+		{
+			"path": "pages/common/list",
+			"style": {
+				"navigationBarTitleText": "列表"
+			}
 		}
 	],
 	"globalStyle": {

@@ -1,0 +1,333 @@
+<template>
+  <view class="page-container">
+    <view class="nav-bar">
+        <text class="nav-title">{{ type === 'wine' ? '酒水列表' : '香烟列表' }} ({{ totalCount }})</text>
+    </view>
+
+    <scroll-view scroll-y class="list-scroll" :scroll-into-view="currentAnchor" scroll-with-animation>
+        <view v-for="(group, index) in groupedList" :key="group.letter" :id="'anchor-' + group.letter">
+            <!-- 字母分割标题 -->
+            <view class="section-header">
+                <text class="section-letter">{{ group.letter }}</text>
+            </view>
+            
+            <!-- 商品卡片 -->
+            <view class="card-list">
+                <view 
+                    class="good-card" 
+                    v-for="(item, i) in group.list" 
+                    :key="item._id"
+                    @click="goToDetail(item)"
+                    hover-class="card-hover"
+                >
+                    <view class="card-content">
+                        <view class="card-row-top">
+                            <text class="good-name">{{ item.name }}</text>
+                        </view>
+                        <view class="card-row-bottom">
+                            <view class="code-box" v-if="item.company_code">
+                                <text class="label">编码</text>
+                                <text class="value">{{ item.company_code }}</text>
+                            </view>
+                            
+                            <!-- 酒水可能没有批发价，也可以显示 -->
+                            <view class="price-box" v-if="item.wholesale_price || item.wholesale_price === 0">
+                                <text class="label">批发</text>
+                                <text class="value-price">¥{{ item.wholesale_price }}</text>
+                            </view>
+                        </view>
+                    </view>
+                    <text class="arrow">›</text>
+                </view>
+            </view>
+        </view>
+        
+        <!-- 空状态 -->
+        <view v-if="loading" class="loading-state">
+            <text>加载中...</text>
+        </view>
+        <view v-if="!loading && groupedList.length === 0" class="empty-state">
+            <text>暂无数据</text>
+        </view>
+    </scroll-view>
+
+    <!-- 侧边字母导航 (可选) -->
+    <view class="side-bar" v-if="groupedList.length > 0">
+        <view 
+            class="side-item" 
+            v-for="group in groupedList" 
+            :key="group.letter"
+            @click="scrollTo(group.letter)"
+        >
+            {{ group.letter }}
+        </view>
+    </view>
+  </view>
+</template>
+
+<script>
+export default {
+    data() {
+        return {
+            type: 'cigarette', // cigarette | wine
+            list: [],
+            groupedList: [], // [{ letter: 'A', list: [] }]
+            totalCount: 0,
+            loading: true,
+            currentAnchor: '',
+            
+            // Pinyin Boundary Char (GB2312 Order roughly)
+            // https://github.com/hotoo/pinyin/issues/100#issuecomment-231158652
+            // 修改为常用汉字边界
+            charTable: [
+                { L: 'A', C: '阿' }, { L: 'B', C: '芭' },
+                { L: 'C', C: '擦' }, { L: 'D', C: '搭' },
+                { L: 'E', C: '蛾' }, { L: 'F', C: '发' },
+                { L: 'G', C: '噶' }, { L: 'H', C: '哈' },
+                { L: 'J', C: '击' }, { L: 'K', C: '喀' },
+                { L: 'L', C: '垃' }, { L: 'M', C: '妈' },
+                { L: 'N', C: '拿' }, { L: 'O', C: '哦' },
+                { L: 'P', C: '啪' }, { L: 'Q', C: '期' },
+                { L: 'R', C: '然' }, { L: 'S', C: '撒' },
+                { L: 'T', C: '塌' }, { L: 'W', C: '挖' },
+                { L: 'X', C: '昔' }, { L: 'Y', C: '压' },
+                { L: 'Z', C: '匝' }
+            ]
+        };
+    },
+    onLoad(options) {
+        if (options.type) {
+            this.type = options.type;
+        }
+        this.fetchData();
+    },
+    methods: {
+        async fetchData() {
+            this.loading = true;
+            try {
+                const cloudObj = uniCloud.importObject(this.type === 'wine' ? 'fzh-wine' : 'fzh-cigarette');
+                const data = await cloudObj.getAll();
+                this.list = data;
+                this.totalCount = data.length;
+                this.processGroups(data);
+            } catch (e) {
+                console.error(e);
+                uni.showToast({ title: '加载失败', icon: 'none' });
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        processGroups(data) {
+            // 1. Sort by Locale (Pinyin)
+            const sorted = [...data].sort((a, b) => {
+                return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+            });
+
+            // 2. Group
+            const groups = {};
+            
+            sorted.forEach(item => {
+                const letter = this.getFirstLetter(item.name);
+                if (!groups[letter]) {
+                    groups[letter] = [];
+                }
+                groups[letter].push(item);
+            });
+
+            // 3. Convert to Array and Sort Keys
+            const result = Object.keys(groups).sort().map(key => ({
+                letter: key,
+                list: groups[key]
+            }));
+
+            // Move '#' (Special chars) to end or beginning? Usually end.
+            // But alphanumeric sort puts # first. That's fine.
+            
+            this.groupedList = result;
+        },
+
+        getFirstLetter(str) {
+            if (!str) return '#';
+            const char = str[0];
+            
+            // Generate Pinyin letter based on localeCompare
+            // Using the table. Iterate backwards? 
+            // 'Z' <= char ? 'Z'
+            // Check in reverse order
+            if (/[a-zA-Z]/.test(char)) return char.toUpperCase();
+            
+            // Sort custom table by char
+            // Actually, we can just find where it fits.
+            // But localeCompare returns -1, 1, 0.
+            
+            // Simple approach: Check against boundaries
+            if (char.localeCompare('阿', 'zh-CN') < 0) return '#';
+            if (char.localeCompare('匝', 'zh-CN') >= 0) return 'Z';
+            
+            // Loop through table to find range
+            // Table order: A, B, C...
+            // Find the last one that is <= char
+            
+            // We need a complete map. Let's use a simpler known mapping function or precise boundaries.
+            // Or just use the first letter of item pinyin if libraries were available.
+            // fallback:
+            
+            for (let i = this.charTable.length - 1; i >= 0; i--) {
+                const ref = this.charTable[i];
+                if (char.localeCompare(ref.C, 'zh-CN') >= 0) {
+                    return ref.L;
+                }
+            }
+            return '#';
+        },
+        
+        scrollTo(letter) {
+            this.currentAnchor = 'anchor-' + letter;
+            uni.showToast({ title: letter, icon: 'none', duration: 500 });
+        },
+        
+        goToDetail(item) {
+            const url = this.type === 'wine' 
+                ? `/pages/wine/detail?id=${item._id}`
+                : `/pages/cigarette/detail?id=${item._id}`;
+            uni.navigateTo({ url });
+        }
+    }
+};
+</script>
+
+<style lang="scss" scoped>
+$bg-color: #F2F2F7;
+$card-bg: #FFFFFF;
+$text-primary: #000000;
+$text-secondary: #8E8E93;
+$theme-blue: #007AFF;
+
+.page-container {
+    height: 100vh;
+    background-color: $bg-color;
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-bar {
+    background-color: #fff;
+    padding: 20rpx 32rpx;
+    border-bottom: 0.5px solid #E5E5EA;
+    .nav-title {
+        font-size: 34rpx;
+        font-weight: 700;
+        color: $text-primary;
+    }
+}
+
+.list-scroll {
+    flex: 1;
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 12rpx 32rpx;
+    background-color: $bg-color;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    
+    .section-letter {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: $text-secondary;
+    }
+}
+
+.card-list {
+    background-color: $card-bg;
+}
+
+.good-card {
+    display: flex;
+    align-items: center;
+    padding: 24rpx 32rpx;
+    border-bottom: 0.5px solid #E5E5EA;
+    
+    &:last-child {
+        border-bottom: none;
+    }
+    
+    .card-content {
+        flex: 1;
+        margin-right: 20rpx;
+    }
+    
+    .card-row-top {
+        margin-bottom: 12rpx;
+        .good-name {
+            font-size: 32rpx;
+            font-weight: 500;
+            color: $text-primary;
+        }
+    }
+    
+    .card-row-bottom {
+        display: flex;
+        align-items: center;
+        
+        .code-box {
+            display: flex;
+            align-items: center;
+            margin-right: 24rpx;
+            background-color: #F2F2F7;
+            padding: 4rpx 12rpx;
+            border-radius: 8rpx;
+            
+            .label { font-size: 20rpx; color: $text-secondary; margin-right: 6rpx; }
+            .value { font-size: 24rpx; color: $text-primary; font-family: monospace; }
+        }
+        
+        .price-box {
+            display: flex;
+            align-items: center;
+            
+            .label { font-size: 20rpx; color: $text-secondary; margin-right: 6rpx; }
+            .value-price { font-size: 26rpx; color: #FF3B30; font-weight: 600; }
+        }
+    }
+    
+    .arrow {
+        font-size: 36rpx;
+        color: #C7C7CC;
+    }
+}
+
+.card-hover {
+    background-color: #F2F2F7;
+}
+
+.side-bar {
+    position: fixed;
+    right: 8rpx;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 20rpx;
+    padding: 10rpx 4rpx;
+    box-shadow: 0 0 10rpx rgba(0,0,0,0.1);
+    z-index: 1000;
+    
+    .side-item {
+        font-size: 22rpx;
+        color: $theme-blue;
+        text-align: center;
+        padding: 4rpx 0;
+        width: 32rpx;
+        font-weight: 600;
+    }
+}
+
+.loading-state, .empty-state {
+    padding: 100rpx 0;
+    text-align: center;
+    color: $text-secondary;
+}
+</style>

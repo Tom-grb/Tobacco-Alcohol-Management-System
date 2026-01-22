@@ -279,5 +279,26 @@ module.exports = {
         ).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
         
         return res.data;
+    },
+
+    /**
+     * 获取香烟总数
+     */
+    async count() {
+        const res = await db.collection('fzh_cigarette').count();
+        return res.total;
+    },
+
+    /**
+     * 获取所有香烟数据 (用于列表页本地排序)
+     */
+    async getAll() {
+        // limit默认20，最大1000。如果要支持更多，需循环获取。
+        // 这里暂时实现单次最大获取 1000 条
+        const res = await db.collection('fzh_cigarette')
+            .field({ company_code: 1, name: 1, wholesale_price: 1, manufacturer: 1 })
+            .limit(1000)
+            .get();
+        return res.data;
     }
 }
