@@ -214,8 +214,8 @@
 
     <!-- Initial Modal for adding/editing record -->
     <!-- Note: uni-app simple modal or custom view overlay -->
-    <view class="modal-overlay" v-if="showModal" @click.self="closeRecordModal">
-        <view class="modal-content">
+    <view class="modal-overlay" v-if="showModal" @click="closeRecordModal">
+        <view class="modal-content" @click.stop>
             <view class="modal-header">
                 <text class="modal-title">{{ editingRecordIndex === -1 ? '添加记录' : '编辑记录' }}</text>
                 <text class="close-btn" @click="closeRecordModal">✕</text>
