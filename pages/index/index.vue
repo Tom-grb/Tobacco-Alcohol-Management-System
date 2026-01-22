@@ -3,7 +3,7 @@
     <!-- 顶部区域：搜索与导航 -->
     <view class="sticky-header" :class="{ 'search-active': isSearchMode }">
       <!-- 只有在非搜索模式下才显示的大标题 -->
-      <view class="header-title-bar" :style="{ opacity: isSearchMode ? 0 : 1, height: isSearchMode ? '0px' : 'auto' }">
+      <view class="header-title-bar" :style="{ opacity: isSearchMode ? 0 : 1, height: isSearchMode ? '0px' : 'auto', overflow: isSearchMode ? 'hidden' : 'visible' }">
         <text class="large-title">工作台</text>
         <view class="user-profile-wrapper">
              <!-- 退出按钮 -->
@@ -371,6 +371,9 @@ export default {
         this.showLogout = !this.showLogout;
     },
     handleLogout() {
+        // 点击后立即隐藏菜单，提升体验
+        this.showLogout = false;
+        
         uni.showModal({
             title: '提示',
             content: '确定要退出登录吗？',
@@ -380,9 +383,6 @@ export default {
                     uni.removeStorageSync('uni_id_token');
                     uni.removeStorageSync('userInfo');
                     uni.removeStorageSync('login_expired');
-                    
-                    // 重置状态
-                    this.showLogout = false;
                     
                     // 跳转回登录页
                     uni.reLaunch({
@@ -796,39 +796,47 @@ $separator-color: #E5E5EA;
 
 .user-profile-wrapper {
     position: relative;
-    display: flex;
-    top: 90rpx; /* Position below the avatar */
-    right: 0;
-    background-color: rgba(255, 255, 255, 0.9); /* Frosted glass effect base */
-    backdrop-filter: blur(20px);
-    padding: 16rpx 0; /* Vertical padding only, width set by min-width */
-    border-radius: 16rpx;
-    width: 180rpx; /* Fixed width for menu feel */
-    box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15); /* Soft, deep shadow */
-    
-    /* Animation */
-    transform-origin: top right;
-    transform: scale(0.9) opacity(0);
-    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-    
-    pointer-events: none;
     z-index: 102;
+    display: flex;
+    align-items: center;
+}
+
+.logout-btn {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 20rpx;
+    
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    
+    padding: 24rpx 40rpx;
+    border-radius: 16rpx;
+    min-width: 160rpx;
     display: flex;
     justify-content: center;
     align-items: center;
     
-    /* Border for contrast on light backgrounds */
+    box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15);
     border: 0.5px solid rgba(0,0,0,0.05);
-
+    
+    /* Animation */
+    transform-origin: top right;
+    transform: scale(0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    
     &.show {
-        transform: scale(1) opacity(1);
+        transform: scale(1);
+        opacity: 1;
+        visibility: visible;
         pointer-events: auto;
     }
-    
-    /* The text style */
+
     text {
         font-size: 30rpx;
-        color: #FF3B30; /* iOS Destructive Red */
+        color: #FF3B30;
         font-weight: 500;
         letter-spacing: 0.5px;
     }
@@ -838,15 +846,10 @@ $separator-color: #E5E5EA;
         content: '';
         position: absolute;
         top: -12rpx;
-        right: 28rpx; /* Align with avatar center */
+        right: 24rpx; /* Align near center of avatar circle (approx 32rpx) */
         border-left: 12rpx solid transparent;
         border-right: 12rpx solid transparent;
-        border-bottom: 12rpx solid rgba(255, 255, 255, 0.9)
-        right: -8rpx;
-        transform: translateY(-50%);
-        border-width: 8rpx 0 8rpx 8rpx;
-        border-style: solid;
-        border-color: transparent transparent transparent #FF3B30;
+        border-bottom: 12rpx solid rgba(255, 255, 255, 0.95);
     }
 }
 
