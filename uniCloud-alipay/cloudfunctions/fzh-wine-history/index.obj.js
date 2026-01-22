@@ -84,5 +84,50 @@ module.exports = {
         // Return reversed (Oldest -> Newest) for chart left-to-right logic? 
         // Or Frontend can reverse. Let's return raw desc.
         return res.data;
+    },
+
+    /**
+     * 导出查询：根据进货时间范围获取详细数据 (含酒水名称关联)
+     */
+    async getExportData(startDate, endDate) {
+        if (!startDate || !endDate) return [];
+        
+        // 1. 获取历史记录
+        const MAX_LIMIT = 1000;
+        const historyRes = await db.collection('fzh_wine_history')
+            .where({
+                purchase_date: dbCmd.gte(startDate).lte(endDate)
+            })
+            .orderBy('purchase_date', 'desc')
+            .limit(MAX_LIMIT)
+            .get();
+        
+        const historyList = historyRes.data;
+        if (historyList.length === 0) return [];
+        
+        // 2. 提取所有关联的 wine_id
+        const wineIds = historyList.map(h => h.wine_id);
+        const uniqueWineIds = [...new Set(wineIds)];
+        
+        // 3. 批量查询酒水名称
+        const wineRes = await db.collection('fzh_wine')
+            .where({
+                _id: dbCmd.in(uniqueWineIds.slice(0, 1000)) // Safety slice
+            })
+            .field({ _id: 1, name: 1 })
+            .limit(1000)
+            .get();
+            
+        // 4. 构建 ID -> Name 映射
+        const wineMap = {};
+        wineRes.data.forEach(w => {
+            wineMap[w._id] = w.name;
+        });
+        
+        // 5. 组合数据
+        return historyList.map(h => ({
+            ...h,
+            wine_name: wineMap[h.wine_id] || '未知酒水'
+        }));
     }
 }

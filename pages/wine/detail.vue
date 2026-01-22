@@ -582,7 +582,7 @@ const uploadImage = async (filePath) => {
     try {
         const result = await uniCloud.uploadFile({
             filePath: filePath,
-            cloudPath: `fzh/wine_${Date.now()}.jpg`
+            cloudPath: `fzh_image/wine_${Date.now()}.jpg`
         });
         
         let imageUrl = result.fileID;

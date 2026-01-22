@@ -201,11 +201,93 @@
       </view>
       
       <view class="bottom-spacer"></view>
+      <!-- 底部遮罩层 (香烟导出字段选择) -->
+      <view class="modal-mask" v-if="showCigaretteExportModal" @click="closeCigaretteExportModal">
+          <view class="modal-content" @click.stop>
+              <view class="modal-header">
+                  <text class="modal-title">选择导出字段</text>
+                  <text class="close-icon" @click="closeCigaretteExportModal">×</text>
+              </view>
+              <view class="field-list">
+                   <view class="field-tip">默认包含：商品名称</view>
+                   <view 
+                        class="field-item" 
+                        v-for="(item, index) in cigaretteFields" 
+                        :key="index"
+                        @click="toggleField(index)"
+                   >
+                       <view class="checkbox" :class="{ checked: item.checked }">
+                           <text v-if="item.checked" class="check-mark">✓</text>
+                       </view>
+                       <text class="field-label">{{ item.label }}</text>
+                   </view>
+              </view>
+              <view class="modal-footer">
+                  <button class="btn-confirm" @click="doExportCigarette" :disabled="isExporting">
+                      {{ isExporting ? '导出中...' : '确认导出' }}
+                  </button>
+              </view>
+          </view>
+      </view>
+
+      <!-- 底部遮罩层 (通用下载链接) -->
+      <view class="modal-mask" v-if="showDownloadModal" @click="closeDownloadModal">
+          <view class="modal-content" @click.stop>
+              <view class="modal-header">
+                  <text class="modal-title">导出成功</text>
+                  <text class="close-icon" @click="closeDownloadModal">×</text>
+              </view>
+              
+              <view class="download-body">
+                  <view class="input-wrapper">
+                    <input class="url-input" type="text" :value="downloadUrl" disabled />
+                  </view>
+                  <view class="modal-actions">
+                      <button class="action-btn btn-copy" @click="copyDownloadUrl">复制链接</button>
+                      <button class="action-btn btn-close" @click="closeDownloadModal">关闭</button>
+                  </view>
+              </view>
+          </view>
+      </view>
+
+      <!-- 底部遮罩层 (日期选择) -->
+      <view class="modal-mask" v-if="showDateModal" @click="closeDateModal">
+          <view class="modal-content" @click.stop>
+              <view class="modal-header">
+                  <text class="modal-title">选择导出时间段</text>
+                  <text class="close-icon" @click="closeDateModal">×</text>
+              </view>
+              <view class="date-picker-group">
+                  <view class="picker-item">
+                      <text class="label">开始日期</text>
+                      <picker mode="date" :value="exportStartDate" @change="bindStartDateChange">
+                        <view class="picker-box">{{ exportStartDate || '请选择' }}</view>
+                      </picker>
+                  </view>
+                  <view class="divider-arrow">→</view>
+                  <view class="picker-item">
+                      <text class="label">结束日期</text>
+                      <picker mode="date" :value="exportEndDate" @change="bindEndDateChange">
+                        <view class="picker-box">{{ exportEndDate || '请选择' }}</view>
+                      </picker>
+                  </view>
+              </view>
+              <view class="modal-footer">
+                  <button class="btn-confirm" @click="confirmExportWine" :disabled="isExporting">
+                      {{ isExporting ? '导出中...' : '确认导出' }}
+                  </button>
+              </view>
+          </view>
+      </view>
+
     </view>
   </view>
 </template>
 
 <script>
+// 引入 XLSX
+import * as XLSX from 'xlsx';
+
 export default {
   data() {
     return {
@@ -220,7 +302,27 @@ export default {
       pageSize: 20,
       hasMore: true,
       isLoadingMore: false,
-      counts: { cigarette: 0, wine: 0 }
+      counts: { cigarette: 0, wine: 0 },
+      
+      // Export related
+      showDateModal: false,
+      exportStartDate: '',
+      exportEndDate: '',
+      isExporting: false,
+      
+      // Cigarette Export
+      showCigaretteExportModal: false,
+      cigaretteFields: [
+          { key: 'company_code', label: '商品编码', checked: false },
+          { key: 'wholesale_price', label: '批发价', checked: false },
+          { key: 'purchase_price', label: '收货价', checked: false },
+          { key: 'retail_price', label: '零售价', checked: false },
+          { key: 'manufacturer', label: '厂家名称', checked: false }
+      ],
+      
+      // Download Modal
+      showDownloadModal: false,
+      downloadUrl: ''
     };
   },
   onLoad() {
@@ -441,10 +543,183 @@ export default {
       });
     },
     handleExportCigarette() {
-      uni.showToast({ title: '点击了导出香烟', icon: 'none' });
+       this.showCigaretteExportModal = true;
     },
+    closeCigaretteExportModal() {
+        this.showCigaretteExportModal = false;
+    },
+    toggleField(index) {
+        this.cigaretteFields[index].checked = !this.cigaretteFields[index].checked;
+    },
+    async doExportCigarette() {
+        if (this.isExporting) return;
+        this.isExporting = true;
+        uni.showLoading({ title: '正在导出...' });
+        
+        try {
+            const fzhCigarette = uniCloud.importObject('fzh-cigarette');
+            const data = await fzhCigarette.getAll();
+            
+            if (!data || data.length === 0) {
+                uni.showToast({ title: '暂无数据', icon: 'none' });
+                this.isExporting = false;
+                uni.hideLoading();
+                return;
+            }
+            
+            // Filter checked fields
+            const selectedFields = this.cigaretteFields.filter(f => f.checked);
+            
+            // Format Data
+            const sheetData = data.map(item => {
+                const row = { '商品名称': item.name }; // Always included
+                selectedFields.forEach(field => {
+                    row[field.label] = item[field.key] || '';
+                });
+                return row;
+            });
+            
+            await this.generateAndExportExcel(sheetData, '香烟数据表');
+            this.showCigaretteExportModal = false;
+            
+        } catch (e) {
+            console.error(e);
+            uni.showToast({ title: '导出失败: ' + e.message, icon: 'none' });
+        } finally {
+            this.isExporting = false;
+            uni.hideLoading();
+        }
+    },
+    
     handleExportWine() {
-      uni.showToast({ title: '点击了导出酒水', icon: 'none' });
+      // Initialize dates (This Month)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      
+      this.exportStartDate = `${year}-${month}-01`;
+      this.exportEndDate = `${year}-${month}-${lastDay}`;
+      
+      this.showDateModal = true;
+    },
+    closeDateModal() {
+        this.showDateModal = false;
+    },
+    bindStartDateChange(e) {
+        this.exportStartDate = e.detail.value;
+    },
+    bindEndDateChange(e) {
+        this.exportEndDate = e.detail.value;
+    },
+    async confirmExportWine() {
+        if (this.isExporting) return;
+        this.isExporting = true;
+        uni.showLoading({ title: '生成中...' });
+        
+        try {
+            const startTs = new Date(this.exportStartDate + ' 00:00:00').getTime();
+            const endTs = new Date(this.exportEndDate + ' 23:59:59').getTime();
+            
+            const fzhHistory = uniCloud.importObject('fzh-wine-history');
+            const list = await fzhHistory.getExportData(startTs, endTs);
+            
+            if (!list || list.length === 0) {
+                uni.showToast({ title: '该时间段无入库记录', icon: 'none' });
+                this.isExporting = false;
+                uni.hideLoading();
+                return;
+            }
+            
+            // Format: Wine Name, Cases, Bottles, Unit Price, Total Amount, Supplier
+            const sheetData = list.map(item => {
+                const dateStr = new Date(item.purchase_date);
+                const Y = dateStr.getFullYear();
+                const M = String(dateStr.getMonth()+1).padStart(2,'0');
+                const D = String(dateStr.getDate()).padStart(2,'0');
+                
+                return {
+                    '进货日期': `${Y}-${M}-${D}`,
+                    '酒水名称': item.wine_name,
+                    '箱数': item.box_num,
+                    '单箱瓶数': item.bottle_per_box,
+                    '单瓶进价': item.price_per_bottle,
+                    '总金额': item.total_amount,
+                    '供应商': item.supplier
+                };
+            });
+            
+            await this.generateAndExportExcel(sheetData, `酒水入库表_${this.exportStartDate}_${this.exportEndDate}`);
+            this.showDateModal = false;
+            
+        } catch (e) {
+            console.error(e);
+            uni.showToast({ title: '导出失败', icon: 'none' });
+        } finally {
+            this.isExporting = false;
+            uni.hideLoading();
+        }
+    },
+    
+    async generateAndExportExcel(data, filename) {
+        // 1. Create Worksheet
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        
+        // 2. Write to binary
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        
+        // 3. Save to temp file
+        // #ifdef MP-WEIXIN
+        const fs = wx.getFileSystemManager();
+        const tempPath = `${wx.env.USER_DATA_PATH}/${filename}.xlsx`;
+        
+        try {
+            fs.writeFileSync(tempPath, wbout, 'binary');
+            console.log('File saved to:', tempPath);
+            
+            // 4. Upload to Cloud to get a URL/FileID (per user request)
+            const uploadRes = await uniCloud.uploadFile({
+                filePath: tempPath,
+                cloudPath: `fzh_exports/${filename}_${Date.now()}.xlsx`
+            });
+            
+            console.log('Upload Result:', uploadRes);
+            
+            // Get https url
+            const tempFiles = await uniCloud.getTempFileURL({
+                fileList: [uploadRes.fileID]
+            });
+            this.downloadUrl = tempFiles.fileList[0].tempFileURL;
+            
+            // Show new Download Modal
+            this.showDownloadModal = true;
+            
+        } catch (err) {
+            throw new Error('文件保存或上传失败: ' + err.message);
+        }
+        // #endif
+        
+        // #ifndef MP-WEIXIN
+        uni.showToast({ title: '当前环境不支持文件导出', icon: 'none' });
+        // #endif
+    },
+    
+    closeDownloadModal() {
+        this.showDownloadModal = false;
+        this.downloadUrl = '';
+    },
+    
+    copyDownloadUrl() {
+        if (!this.downloadUrl) return;
+        uni.setClipboardData({
+            data: this.downloadUrl,
+            success: () => {
+                uni.showToast({ title: '链接已复制', icon: 'none' });
+            }
+        });
     }
   }
 };
@@ -902,7 +1177,84 @@ $separator-color: #E5E5EA;
     border-radius: 20rpx;
     overflow: hidden; 
     box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
-/* Assign remaining space if any, or just sit there */
+    /* Assign remaining space if any, or just sit there */
+}
+
+/* Modal Styles */
+.modal-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    width: 600rpx;
+    background-color: #fff;
+    border-radius: 24rpx;
+    padding: 32rpx;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40rpx;
+    
+    .modal-title { font-size: 34rpx; font-weight: 600; color: $text-primary; }
+    .close-icon { font-size: 40rpx; color: $text-secondary; padding: 0 10rpx; }
+}
+
+.date-picker-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40rpx;
+    
+    .picker-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        
+        .label { font-size: 24rpx; color: $text-secondary; margin-bottom: 12rpx; }
+        .picker-box {
+            height: 80rpx;
+            background-color: #F2F2F7;
+            border-radius: 12rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28rpx;
+            color: $theme-blue;
+            font-weight: 500;
+        }
+    }
+    
+    .divider-arrow {
+        margin: 0 20rpx;
+        color: $text-secondary;
+        font-weight: bold;
+        padding-top: 30rpx; 
+    }
+}
+
+.modal-footer {
+    .btn-confirm {
+        background-color: $theme-blue;
+        color: #fff;
+        border-radius: 40rpx;
+        font-size: 30rpx;
+        font-weight: 600;
+        &[disabled] { opacity: 0.6; }
+    }
 }
 
 .list-item {
@@ -951,5 +1303,96 @@ $separator-color: #E5E5EA;
 
 .bottom-spacer {
     display: none; /* No spacer needed for compact fixed layout */
+}
+
+/* Cigarette Export Modal Styles */
+.field-list {
+    margin-bottom: 30rpx;
+}
+.field-tip {
+    font-size: 24rpx;
+    color: $text-secondary;
+    margin-bottom: 20rpx;
+    padding-left: 10rpx;
+}
+.field-item {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 0;
+    border-bottom: 0.5px solid $separator-color;
+    &:last-child { border-bottom: none; }
+    
+    .field-label {
+        font-size: 30rpx;
+        color: $text-primary;
+        margin-left: 20rpx;
+    }
+}
+.checkbox {
+    width: 44rpx;
+    height: 44rpx;
+    border-radius: 50%;
+    border: 2px solid #C7C7CC;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    
+    &.checked {
+        background-color: $theme-blue;
+        border-color: $theme-blue;
+    }
+    
+    .check-mark {
+        color: #fff;
+        font-size: 28rpx;
+        font-weight: bold;
+    }
+}
+
+/* Download Result Modal Styles */
+.download-body {
+    display: flex;
+    flex-direction: column;
+}
+.input-wrapper {
+    background-color: #F2F2F7;
+    border-radius: 12rpx;
+    padding: 20rpx;
+    margin-bottom: 30rpx;
+}
+.url-input {
+    font-size: 26rpx;
+    color: $text-primary;
+    width: 100%;
+    height: 40rpx;
+    // single line
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 20rpx;
+    
+    .action-btn {
+        flex: 1;
+        height: 80rpx;
+        border-radius: 40rpx;
+        font-size: 30rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        
+        &.btn-copy {
+            background-color: $theme-blue;
+            color: #fff; 
+        }
+        
+        &.btn-close {
+            background-color: #F2F2F7;
+            color: $text-primary;
+        }
+    }
 }
 </style>
