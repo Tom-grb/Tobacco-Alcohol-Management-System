@@ -1,5 +1,5 @@
 <template>
-  <view class="page-container">
+  <view class="page-container" @click="closeGlobalPopups">
     <!-- 顶部区域：搜索与导航 -->
     <view class="sticky-header" :class="{ 'search-active': isSearchMode }">
       <!-- 只有在非搜索模式下才显示的大标题 -->
@@ -8,7 +8,7 @@
         <view class="user-profile-wrapper">
              <!-- 退出按钮 -->
              <view class="logout-btn" :class="{ 'show': showLogout }" @click.stop="handleLogout">
-                 <text>退出</text>
+                 <text>退出登录</text>
              </view>
              
              <view class="user-profile" @click.stop="toggleLogout">
@@ -361,6 +361,11 @@ export default {
     },
     goToList(type) {
         uni.navigateTo({ url: `/pages/common/list?type=${type}` });
+    },
+    closeGlobalPopups() {
+        if (this.showLogout) {
+            this.showLogout = false;
+        }
     },
     toggleLogout() {
         this.showLogout = !this.showLogout;
@@ -757,7 +762,6 @@ $separator-color: #E5E5EA;
   
   &.search-active {
      background-color: $bg-color;
-     flex: 1; /* Expand in search mode */
   }
 }
 
@@ -793,34 +797,51 @@ $separator-color: #E5E5EA;
 .user-profile-wrapper {
     position: relative;
     display: flex;
-    align-items: center;
-}
-
-.logout-btn {
-    position: absolute;
-    right: 110%; 
-    background-color: #FF3B30;
-    color: white;
-    padding: 8rpx 20rpx;
-    border-radius: 10rpx;
-    font-size: 24rpx;
-    white-space: nowrap;
-    opacity: 0;
-    transform: translateX(20rpx);
-    pointer-events: none;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 0 4rpx 12rpx rgba(255, 59, 48, 0.2);
+    top: 90rpx; /* Position below the avatar */
+    right: 0;
+    background-color: rgba(255, 255, 255, 0.9); /* Frosted glass effect base */
+    backdrop-filter: blur(20px);
+    padding: 16rpx 0; /* Vertical padding only, width set by min-width */
+    border-radius: 16rpx;
+    width: 180rpx; /* Fixed width for menu feel */
+    box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15); /* Soft, deep shadow */
     
+    /* Animation */
+    transform-origin: top right;
+    transform: scale(0.9) opacity(0);
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    
+    pointer-events: none;
+    z-index: 102;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Border for contrast on light backgrounds */
+    border: 0.5px solid rgba(0,0,0,0.05);
+
     &.show {
-        opacity: 1;
-        transform: translateX(0);
+        transform: scale(1) opacity(1);
         pointer-events: auto;
     }
     
-    &::after {
+    /* The text style */
+    text {
+        font-size: 30rpx;
+        color: #FF3B30; /* iOS Destructive Red */
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Popover Arrow */
+    &::before {
         content: '';
         position: absolute;
-        top: 50%;
+        top: -12rpx;
+        right: 28rpx; /* Align with avatar center */
+        border-left: 12rpx solid transparent;
+        border-right: 12rpx solid transparent;
+        border-bottom: 12rpx solid rgba(255, 255, 255, 0.9)
         right: -8rpx;
         transform: translateY(-50%);
         border-width: 8rpx 0 8rpx 8rpx;
