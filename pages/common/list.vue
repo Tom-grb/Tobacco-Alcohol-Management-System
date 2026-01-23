@@ -66,6 +66,8 @@
 </template>
 
 <script>
+import { pinyin } from 'pinyin-pro';
+
 export default {
     data() {
         return {
@@ -74,25 +76,7 @@ export default {
             groupedList: [], // [{ letter: 'A', list: [] }]
             totalCount: 0,
             loading: true,
-            currentAnchor: '',
-            
-            // Pinyin Boundary Char (GB2312 Order roughly)
-            // https://github.com/hotoo/pinyin/issues/100#issuecomment-231158652
-            // 修改为常用汉字边界
-            charTable: [
-                { L: 'A', C: '阿' }, { L: 'B', C: '芭' },
-                { L: 'C', C: '擦' }, { L: 'D', C: '搭' },
-                { L: 'E', C: '蛾' }, { L: 'F', C: '发' },
-                { L: 'G', C: '噶' }, { L: 'H', C: '哈' },
-                { L: 'J', C: '击' }, { L: 'K', C: '喀' },
-                { L: 'L', C: '垃' }, { L: 'M', C: '妈' },
-                { L: 'N', C: '拿' }, { L: 'O', C: '哦' },
-                { L: 'P', C: '啪' }, { L: 'Q', C: '期' },
-                { L: 'R', C: '然' }, { L: 'S', C: '撒' },
-                { L: 'T', C: '塌' }, { L: 'W', C: '挖' },
-                { L: 'X', C: '昔' }, { L: 'Y', C: '压' },
-                { L: 'Z', C: '匝' }
-            ]
+            currentAnchor: ''
         };
     },
     onLoad(options) {
@@ -119,15 +103,10 @@ export default {
         },
         
         processGroups(data) {
-            // 1. Sort by Locale (Pinyin)
-            const sorted = [...data].sort((a, b) => {
-                return (a.name || '').localeCompare(b.name || '', 'zh-CN');
-            });
-
-            // 2. Group
+            // 1. Group by First Letter of Pinyin
             const groups = {};
             
-            sorted.forEach(item => {
+            data.forEach(item => {
                 const letter = this.getFirstLetter(item.name);
                 if (!groups[letter]) {
                     groups[letter] = [];
@@ -135,50 +114,45 @@ export default {
                 groups[letter].push(item);
             });
 
-            // 3. Convert to Array and Sort Keys
-            const result = Object.keys(groups).sort().map(key => ({
+            // 2. Convert to Array and Sort Keys (A-Z, # at end)
+            let keys = Object.keys(groups).sort();
+            
+            // Move '#' to the end if present
+            if (keys.includes('#')) {
+                keys = keys.filter(k => k !== '#');
+                keys.push('#');
+            }
+
+            const result = keys.map(key => ({
                 letter: key,
-                list: groups[key]
+                // 3. Sort items within group
+                list: groups[key].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'))
             }));
 
-            // Move '#' (Special chars) to end or beginning? Usually end.
-            // But alphanumeric sort puts # first. That's fine.
-            
             this.groupedList = result;
         },
 
         getFirstLetter(str) {
             if (!str) return '#';
-            const char = str[0];
+            const firstChar = str[0];
             
-            // Generate Pinyin letter based on localeCompare
-            // Using the table. Iterate backwards? 
-            // 'Z' <= char ? 'Z'
-            // Check in reverse order
-            if (/[a-zA-Z]/.test(char)) return char.toUpperCase();
+            // Build-in check for English
+            if (/[a-zA-Z]/.test(firstChar)) return firstChar.toUpperCase();
             
-            // Sort custom table by char
-            // Actually, we can just find where it fits.
-            // But localeCompare returns -1, 1, 0.
-            
-            // Simple approach: Check against boundaries
-            if (char.localeCompare('阿', 'zh-CN') < 0) return '#';
-            if (char.localeCompare('匝', 'zh-CN') >= 0) return 'Z';
-            
-            // Loop through table to find range
-            // Table order: A, B, C...
-            // Find the last one that is <= char
-            
-            // We need a complete map. Let's use a simpler known mapping function or precise boundaries.
-            // Or just use the first letter of item pinyin if libraries were available.
-            // fallback:
-            
-            for (let i = this.charTable.length - 1; i >= 0; i--) {
-                const ref = this.charTable[i];
-                if (char.localeCompare(ref.C, 'zh-CN') >= 0) {
-                    return ref.L;
+            // Use pinyin-pro for Chinese
+            // pattern: 'first', toneType: 'none', type: 'array'
+            try {
+                const py = pinyin(firstChar, { pattern: 'first', toneType: 'none', type: 'array' });
+                if (py && py.length > 0) {
+                    const letter = py[0].toUpperCase();
+                    if (/[A-Z]/.test(letter)) {
+                        return letter;
+                    }
                 }
+            } catch (e) {
+                console.error('Pinyin conversion error', e);
             }
+            
             return '#';
         },
         
