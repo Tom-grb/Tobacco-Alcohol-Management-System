@@ -62,7 +62,12 @@
         </view>
 
         <!-- 搜索结果列表 -->
-        <scroll-view scroll-y class="result-list" v-if="keyword">
+        <scroll-view 
+            scroll-y 
+            class="result-list" 
+            v-if="keyword"
+            @scrolltolower="onScrollToLower"
+        >
             <view 
                 class="result-item" 
                 v-for="item in searchResult" 
@@ -87,14 +92,25 @@
                 </view>
             </view>
             
+            <!-- 加载更多提示 -->
+            <view class="loading-more-bar" v-if="searchResult.length > 0">
+                 <view v-if="isLoadingMore" class="spinner-box">
+                     <view class="spinner"></view>
+                     <text>正在检索数据...</text>
+                 </view>
+                 <text v-else class="status-msg">{{ hasMore ? '上拉加载更多' : '— 已显示全部记录 —' }}</text>
+            </view>
+            
             <!-- 空状态 -->
             <view class="empty-search-state" v-if="searchResult.length === 0 && !searching">
+                <text class="empty-icon">🔎</text>
                 <text class="empty-text">未找到相关商品</text>
             </view>
         </scroll-view>
 
         <!-- 初始空状态提示 (仅当无历史且无输入时) -->
         <view class="empty-search-state" v-if="!keyword && historyList.length === 0">
+            <text class="empty-icon">⌨️</text>
             <text class="empty-text">输入关键词搜索商品</text>
         </view>
     </view>
@@ -335,17 +351,20 @@ export default {
   onShow() {
       this.fetchCounts();
       // 如果处于搜索模式且有关键词，每次显示页面时刷新搜索结果
-      // 这里的场景主要是：用户点击某个商品进入详情页，进行了编辑或删除操作，返回来时需要更新列表
       if (this.isSearchMode && this.keyword) {
-          this.doSearch(this.keyword, false);
+          // 刷新数据，不重置分页 (可选: 如果希望回到第一页则不传 false)
+          this.doSearch(this.keyword, false, false);
       }
   },
-  onReachBottom() {
-      if (this.isSearchMode && this.keyword && this.hasMore && !this.isLoadingMore) {
-          this.doSearch(this.keyword, false, true);
-      }
-  },
+  // Removed onReachBottom because we use scroll-view
   methods: {
+    // 监听 ScrollView 滚动到底部
+    onScrollToLower() {
+        if (this.isSearchMode && this.keyword && this.hasMore && !this.isLoadingMore) {
+            console.log('Load More Triggered');
+            this.doSearch(this.keyword, false, true);
+        }
+    },
     async fetchCounts() {
         try {
             const fzhCigarette = uniCloud.importObject('fzh-cigarette');
@@ -467,11 +486,12 @@ export default {
             }
             
             // 判断是否还有更多：如果本次获取数量少于预期，通常没有更多了
-            // 这里我们对两个都取了 pageSize，所以如果总数加起来少于 (pageSize/2 * 2)? 
-            // 简单判断: 如果任何一个返回了 full page，可能还有。
-            // 最安全的判断: 如果本次combined为空，肯定没了。
             if (combined.length === 0) {
                 this.hasMore = false;
+            } else if (cigRes && cigRes.length < this.pageSize && wineRes && wineRes.length < this.pageSize) {
+                // 如果两边都少于请求的 pageSize，说明都取完了
+                this.hasMore = false;
+                this.page++;
             } else {
                 this.page++;
             }
@@ -597,15 +617,20 @@ export default {
     },
     
     handleExportWine() {
-      // Initialize dates (This Month)
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      // 默认结束日期为当天，开始日期为一个月前
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
       
-      this.exportStartDate = `${year}-${month}-01`;
-      this.exportEndDate = `${year}-${month}-${lastDay}`;
+      const formatDate = (date) => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+      };
+      
+      this.exportEndDate = formatDate(end);
+      this.exportStartDate = formatDate(start);
       
       this.showDateModal = true;
     },
@@ -923,18 +948,10 @@ $separator-color: #E5E5EA;
     flex-direction: column; 
     justify-content: flex-start;
     padding-top: 20rpx;
-    
-    .empty-search-state {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        
-        .empty-text {
-            color: $text-secondary;
-            font-size: 30rpx;
-        }
-    }
+    overflow: hidden; /* 必须加，防止子元素溢出撑开父容器导致无法滚动 */
+    box-sizing: border-box;
+    position: relative;
+    z-index: 99;
 }
 
 /* History Section */
@@ -989,29 +1006,32 @@ $separator-color: #E5E5EA;
 
 .result-item {
     background-color: $card-bg;
-    padding: 20rpx 32rpx;
-    margin-bottom: 1px;
+    padding: 28rpx 32rpx;
+    margin-bottom: 2rpx;
     display: flex;
     align-items: center;
+    transition: all 0.2s ease;
     
     &:active {
-        background-color: #E5E5EA;
+        background-color: #F2F2F7;
+        transform: scale(0.98);
     }
     
     .category-tag {
-        width: 50rpx;
-        height: 50rpx;
-        border-radius: 10rpx;
+        width: 56rpx;
+        height: 56rpx;
+        border-radius: 14rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 20rpx;
-        font-size: 24rpx;
-        font-weight: bold;
+        margin-right: 24rpx;
+        font-size: 26rpx;
+        font-weight: 700;
         color: #fff;
+        box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.1);
         
-        &.tag-cigarette { background-color: #FF9500; }
-        &.tag-wine { background-color: #AF52DE; }
+        &.tag-cigarette { background: linear-gradient(135deg, #FF9500, #FFCC00); }
+        &.tag-wine { background: linear-gradient(135deg, #AF52DE, #D471FF); }
     }
     
     .item-info {
@@ -1022,18 +1042,19 @@ $separator-color: #E5E5EA;
         overflow: hidden;
         
         .item-name {
-            font-size: 30rpx;
-            font-weight: 500;
+            font-size: 32rpx;
+            font-weight: 600;
             color: $text-primary;
-            margin-bottom: 4rpx;
+            margin-bottom: 6rpx;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         
         .item-code {
-            font-size: 22rpx;
+            font-size: 24rpx;
             color: $text-secondary;
+            letter-spacing: 0.5px;
         }
     }
     
@@ -1041,75 +1062,144 @@ $separator-color: #E5E5EA;
         display: flex;
         flex-direction: column;
         align-items: flex-end;
+        padding-left: 20rpx;
         
         .price-label {
-            font-size: 18rpx;
+            font-size: 20rpx;
             color: $text-secondary;
-            margin-bottom: 2rpx;
+            text-transform: uppercase;
+            margin-bottom: 4rpx;
         }
         
         .price-value {
-            font-size: 30rpx;
-            font-weight: 600;
+            font-size: 34rpx;
+            font-weight: 700;
             color: $theme-blue;
         }
+    }
+}
+
+.loading-more-bar {
+    padding: 40rpx 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    .status-msg {
+        font-size: 24rpx;
+        color: $text-secondary;
+        letter-spacing: 1px;
+    }
+    
+    .spinner-box {
+        display: flex;
+        align-items: center;
+        gap: 16rpx;
+        color: $text-secondary;
+        font-size: 24rpx;
+    }
+}
+
+.spinner {
+    width: 32rpx;
+    height: 32rpx;
+    border: 3rpx solid rgba($theme-blue, 0.2);
+    border-top: 3rpx solid $theme-blue;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.empty-search-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 20%;
+    
+    .empty-icon {
+        font-size: 80rpx;
+        margin-bottom: 20rpx;
+        opacity: 0.6;
+    }
+    
+    .empty-text {
+        color: $text-secondary;
+        font-size: 28rpx;
+        font-weight: 500;
     }
 }
 
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: 24rpx 32rpx;
+  padding: 32rpx;
   box-sizing: border-box;
-  // overflow-y: auto; // Remove explicit scroll if content fits
+  overflow-y: auto; 
   display: flex;
   flex-direction: column;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Common Card Styles */
 .section-header {
-    margin-top: 24rpx; /* Compact spacing */
-    margin-bottom: 12rpx;
-    padding-left: 8rpx;
+    margin-top: 40rpx;
+    margin-bottom: 16rpx;
+    padding-left: 12rpx;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     
     .section-title {
-        font-size: 30rpx; /* Smaller title */
-        font-weight: 700;
+        font-size: 34rpx;
+        font-weight: 800;
         color: $text-primary;
+        letter-spacing: -0.5px;
     }
 }
 
 .card-group, .grid-group, .list-group {
-    margin-bottom: 16rpx;
+    margin-bottom: 30rpx;
 }
 
 /* Action Card (Import) */
 .action-card {
     background-color: $card-bg;
-    border-radius: 20rpx;
-    padding: 24rpx; /* Smaller Card */
+    border-radius: 28rpx;
+    padding: 40rpx 32rpx;
     display: flex;
     align-items: center;
-    box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+    box-shadow: 0 8rpx 30rpx rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0,0,0,0.02);
     
-    /* Slightly taller to anchor the page */
-    padding-top: 32rpx;
-    padding-bottom: 32rpx;
+    &:active {
+        transform: translateY(2rpx);
+        box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+        background-color: #F8F8F8;
+    }
 }
 
 .card-icon-bg {
-    width: 80rpx; /* 96->80 */
-    height: 80rpx;
-    border-radius: 16rpx;
+    width: 100rpx;
+    height: 100rpx;
+    border-radius: 24rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 20rpx;
+    margin-right: 28rpx;
     
-    &.icon-blue { background-color: rgba(0, 122, 255, 0.1); color: #007AFF; }
+    &.icon-blue { 
+        background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), rgba(0, 122, 255, 0.2)); 
+        color: #007AFF; 
+    }
     
     .emoji-icon {
-        font-size: 40rpx; /* 48->40 */
+        font-size: 52rpx;
     }
 }
 
@@ -1119,15 +1209,16 @@ $separator-color: #E5E5EA;
     flex-direction: column;
     
     .card-title {
-        font-size: 30rpx;
-        font-weight: 600;
+        font-size: 34rpx;
+        font-weight: 700;
         color: $text-primary;
-        margin-bottom: 6rpx;
+        margin-bottom: 8rpx;
     }
     
     .card-subtitle {
-        font-size: 22rpx;
+        font-size: 24rpx;
         color: $text-secondary;
+        font-weight: 500;
     }
 }
 
@@ -1142,37 +1233,48 @@ $separator-color: #E5E5EA;
 .grid-group {
     display: flex;
     justify-content: space-between;
+    gap: 20rpx;
 }
 
 .grid-card {
     background-color: $card-bg;
-    width: 48.5%; 
-    border-radius: 20rpx;
-    padding: 24rpx 20rpx;
+    flex: 1;
+    border-radius: 24rpx;
+    padding: 30rpx 24rpx;
     box-sizing: border-box;
     display: flex;
-    flex-direction: row; /* Change to row */
-    align-items: center; /* Center vertically */
-    box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+    flex-direction: row;
+    align-items: center;
+    box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+    
+    &:active {
+        transform: scale(0.96);
+        background-color: #F8F8F8;
+    }
     
     .grid-icon-box {
-        width: 64rpx; 
-        height: 64rpx;
-        border-radius: 14rpx;
+        width: 80rpx; 
+        height: 80rpx;
+        border-radius: 20rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 0; /* Remove bottom margin */
-        margin-right: 16rpx; /* Add right margin */
-        flex-shrink: 0; /* Prevent shrinking */
+        margin-right: 20rpx;
+        flex-shrink: 0;
         
-        &.bg-orange { background-color: rgba(255, 149, 0, 0.1); }
-        &.bg-purple { background-color: rgba(175, 82, 222, 0.1); }
+        &.bg-orange { 
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.1), rgba(255, 149, 0, 0.2)); 
+            color: #FF9500;
+        }
+        &.bg-purple { 
+            background: linear-gradient(135deg, rgba(175, 82, 222, 0.1), rgba(175, 82, 222, 0.2)); 
+            color: #AF52DE;
+        }
         
-        .emoji-large { font-size: 32rpx; }
+        .emoji-large { font-size: 40rpx; }
     }
 
-    /* Wrap text in a container for vertical stacking within the row */
     .grid-text-content {
         display: flex;
         flex-direction: column;
@@ -1181,27 +1283,26 @@ $separator-color: #E5E5EA;
     }
     
     .grid-title {
-        font-size: 28rpx;
-        font-weight: 600;
+        font-size: 30rpx;
+        font-weight: 700;
         color: $text-primary;
-        margin-bottom: 2rpx;
+        margin-bottom: 4rpx;
         white-space: nowrap;
     }
     
     .grid-desc {
         font-size: 22rpx;
         color: $text-secondary;
-        white-space: nowrap;
+        font-weight: 500;
     }
 }
 
 /* List Group */
 .list-group {
     background-color: $card-bg;
-    border-radius: 20rpx;
+    border-radius: 28rpx;
     overflow: hidden; 
-    box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
-    /* Assign remaining space if any, or just sit there */
+    box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.04);
 }
 
 /* Modal Styles */
@@ -1282,10 +1383,15 @@ $separator-color: #E5E5EA;
 }
 
 .list-item {
-    padding: 24rpx 32rpx;
+    padding: 32rpx;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    transition: background-color 0.2s;
+    
+    &:active {
+        background-color: #F8F8F8;
+    }
     
     .item-left {
         display: flex;
@@ -1293,31 +1399,31 @@ $separator-color: #E5E5EA;
     }
     
     .small-icon-box {
-        width: 56rpx;
-        height: 56rpx;
-        border-radius: 12rpx;
+        width: 72rpx;
+        height: 72rpx;
+        border-radius: 18rpx;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 20rpx;
+        margin-right: 24rpx;
         
-        &.bg-green { background-color: rgba(52, 199, 89, 0.1); }
-        &.bg-indigo { background-color: rgba(88, 86, 214, 0.1); }
+        &.bg-green { background: linear-gradient(135deg, rgba(52, 199, 89, 0.1), rgba(52, 199, 89, 0.2)); color: #34C759; }
+        &.bg-indigo { background: linear-gradient(135deg, rgba(88, 86, 214, 0.1), rgba(88, 86, 214, 0.2)); color: #5856D6; }
         
-        .emoji-small { font-size: 28rpx; }
+        .emoji-small { font-size: 36rpx; }
     }
     
     .item-title {
-        font-size: 28rpx;
+        font-size: 30rpx;
         color: $text-primary;
-        font-weight: 500;
+        font-weight: 600;
     }
 }
 
 .divider {
     height: 1px;
     background-color: $separator-color;
-    margin-left: 108rpx; 
+    margin-left: 128rpx; 
 }
 
 .card-hover, .list-hover {

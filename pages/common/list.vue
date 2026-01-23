@@ -293,8 +293,8 @@ $theme-blue: #007AFF;
         font-size: 22rpx;
         color: $theme-blue;
         text-align: center;
-        padding: 4rpx 0;
-        width: 32rpx;
+        padding: 4rpx 0;                                                                                                                                                                                                                                                                                                                                                                                                                                          
+        width: 55rpx;
         font-weight: 600;
     }
 }
