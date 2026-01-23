@@ -396,13 +396,13 @@ export default {
       this.isSearchMode = true;
       this.showLogout = false; // 进入搜索模式时隐藏退出按钮
       // 可以在这里隐藏tabbar，视觉效果更好
-      uni.hideTabBar();
+      // uni.hideTabBar();
     },
     exitSearchMode() {
       this.isSearchMode = false;
       this.keyword = '';
       this.searchResult = [];
-      uni.showTabBar();
+      // uni.showTabBar();
       // 收起键盘
       uni.hideKeyboard();
     },
@@ -577,7 +577,7 @@ export default {
             
             // Format Data
             const sheetData = data.map(item => {
-                const row = { '商品名称': item.name }; // Always included
+                const row = { '商品': item.name }; // Always included
                 selectedFields.forEach(field => {
                     row[field.label] = item[field.key] || '';
                 });

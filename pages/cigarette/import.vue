@@ -132,92 +132,57 @@ export default {
     readExcel(filePath) {
         this.isProcessing = true;
         const fs = wx.getFileSystemManager();
-        // 读取 ArrayBuffer，不指定 encoding
+        // 使用 Base64 读取，交由云函数解析 (解决真机 GBK/Node 环境兼容性问题)
+        // #ifdef MP-WEIXIN
         fs.readFile({
             filePath: filePath,
+            encoding: 'base64', 
             success: (res) => {
-                const data = res.data; // ArrayBuffer
-                this.parseData(data);
+                const base64 = res.data;
+                this.cloudParseAndImport(base64);
             },
             fail: (err) => {
+                console.error(err);
                 this.isProcessing = false;
-                uni.showToast({ title: '读取文件失败', icon: 'none' });
+                uni.showToast({ title: '读取文件失败: ' + err.errMsg, icon: 'none' });
             }
         });
+        // #endif
+        
+        // #ifndef MP-WEIXIN
+        // For H5 or other dev envs where readFile might differ
+         uni.showToast({ title: '请在微信小程序环境测试', icon: 'none' });
+         this.isProcessing = false;
+        // #endif
     },
-    parseData(data) {
+    
+    async cloudParseAndImport(base64) {
         try {
-            let workbook;
-            let content;
-            
-            // 简单判断文件类型：检查前几个字节（Magic Number）
-            const view = new Uint8Array(data);
-            let isExcelBinary = false;
-            
-            // Excel (.xlsx): 50 4B 03 04 (PK..)
-            // Excel (.xls):  D0 CF 11 E0
-            if (view.length > 4) {
-                if ((view[0] === 0x50 && view[1] === 0x4B) || 
-                    (view[0] === 0xD0 && view[1] === 0xCF)) {
-                    isExcelBinary = true;
-                }
-            }
+             uni.showLoading({ title: '云端智能解析...', mask: true });
+             const fzhCigarette = uniCloud.importObject('fzh-cigarette');
+             
+             // 1. Call Cloud Parse
+             const rows = await fzhCigarette.parseExcelFile(base64);
+             console.log('Cloud Parsed Rows Count:', rows ? rows.length : 0);
+             
+             // 2. Process Rows locally (validation)
+             this.processRows(rows);
+             
+        } catch(e) {
+             console.error('Cloud Parse Error:', e);
+             uni.hideLoading();
+             this.isProcessing = false;
+             uni.showModal({
+                 title: '解析失败',
+                 content: e.message || '云端解析出错，请检查文件格式',
+                 showCancel: false
+             });
+        }
+    },
 
-            if (isExcelBinary) {
-                // Excel 文件直接解析
-                workbook = XLSX.read(data, { type: 'array' });
-            } else {
-                // 认为是 CSV/文本，尝试检测编码 (GBK vs UTF-8)
-                // 优先尝试 UTF-8
-                let str = '';
-                let encoding = 'utf-8';
-                
-                if (typeof TextDecoder !== 'undefined') {
-                    try {
-                        const decoderUtf8 = new TextDecoder('utf-8', { fatal: true });
-                        str = decoderUtf8.decode(data);
-                    } catch (e) {
-                        // UTF-8 解码失败，尝试 GBK
-                        try {
-                            const decoderGbk = new TextDecoder('gbk');
-                            str = decoderGbk.decode(data);
-                            encoding = 'gbk';
-                        } catch (e2) {
-                            // 都不行，回退到默认
-                            str = '';
-                        }
-                    }
-                    
-                    // 如果都没解码成功，或者解码后不包含关键词，尝试强制 GBK (针对 TextDecoder('utf-8') 不报错但乱码的情况)
-                    // 关键词检查：商品、编码、批发
-                    if (!str.includes('商品') && !str.includes('编码')) {
-                         try {
-                            const decoderGbk = new TextDecoder('gbk');
-                            const strGbk = decoderGbk.decode(data);
-                            if (strGbk.includes('商品') || strGbk.includes('编码')) {
-                                str = strGbk;
-                                encoding = 'gbk';
-                            }
-                         } catch (e) {}
-                    }
-                }
-                
-                if (str && (str.includes('商品') || str.includes('编码'))) {
-                     console.log('Detected CSV Encoding:', encoding);
-                     workbook = XLSX.read(str, { type: 'string' });
-                } else {
-                     // 兜底：交给 XLSX 自动处理（通常默认 UTF-8 或 Latin1）
-                     console.log('Fallback to XLSX array read');
-                     workbook = XLSX.read(data, { type: 'array' });
-                }
-            }
-
-            const sheetName = workbook.SheetNames[0]; // 读取第一个sheet
-            const sheet = workbook.Sheets[sheetName];
-            
-            // 使用 header: 1 模式获取二维数组，确保能准确处理表头
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            
+    processRows(rows) {
+        uni.hideLoading();
+        try {
             if (!rows || rows.length < 2) {
                 uni.showToast({ title: '表格为空或无数据行', icon: 'none' });
                 this.isProcessing = false;
@@ -227,7 +192,6 @@ export default {
             console.log('Total Rows:', rows.length);
 
             // 1. 定位表头（取第一行）
-            // 兼容可能存在的空单元格，转字符串并去空格
             const header = rows[0].map(val => String(val || '').trim());
             console.log('Header Row:', header);
 
@@ -240,7 +204,7 @@ export default {
             if (idxCode === -1 || idxName === -1 || idxPrice === -1) {
                 let missing = [];
                 if (idxCode === -1) missing.push('商品编码');
-                if (idxName === -1) missing.push('商品名称');
+                if (idxName === -1) missing.push('商品');
                 if (idxPrice === -1) missing.push('批发价');
                 
                 uni.showModal({
@@ -254,14 +218,11 @@ export default {
 
             // 3. 提取数据（从第二行开始）
             const items = rows.slice(1).map(row => {
-                // row 是数组，按索引取值
-                // 注意：row的长度可能短于header长度
                 const code = row[idxCode];
                 const name = row[idxName];
                 const price = row[idxPrice];
                 const manufacturer = idxManufacturer > -1 ? row[idxManufacturer] : '';
 
-                // 简单的空值检查
                 if (!code && !name) return null;
 
                 return {
@@ -271,7 +232,6 @@ export default {
                      manufacturer: manufacturer
                 };
             }).filter(item => {
-                // 过滤无效行：必须有编码、名称、价格
                 return item && 
                        item.company_code && 
                        item.name && 
@@ -291,7 +251,7 @@ export default {
         } catch (e) {
             console.error(e);
             this.isProcessing = false;
-            uni.showToast({ title: '解析Excel失败: ' + (e.message || '未知错误'), icon: 'none' });
+            uni.showToast({ title: '处理数据失败: ' + (e.message || '未知错误'), icon: 'none' });
         }
     },
     async uploadToCloud(items) {

@@ -87,7 +87,7 @@ module.exports = {
      * @param {Number} skip 
      * @param {Number} limit 
      */
-    async search(keyword, skip = 0, limit = 20) {
+    async search(keyword, skip = 0, limit = 10) {
         if (!keyword) return [];
         const regex = new RegExp(keyword, 'i');
         const res = await db.collection('fzh_wine').where({

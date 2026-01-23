@@ -2,5 +2,8 @@
   "name": "fzh-cigarette",
   "version": "1.0.0",
   "main": "index.obj.js",
-  "type": "module"
+  "dependencies": {
+    "iconv-lite": "^0.7.2",
+    "xlsx": "^0.18.5"
+  }
 }

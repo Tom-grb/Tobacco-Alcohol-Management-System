@@ -2,6 +2,8 @@
 // jsdoc语法提示教程: https://ask.dcloud.net.cn/article/129
 const db = uniCloud.database();
 const dbCmd = db.command;
+const XLSX = require('xlsx');
+const iconv = require('iconv-lite');
 
 module.exports = {
 	_before: function () { // 通用预处理器
@@ -142,6 +144,57 @@ module.exports = {
     },
 
     /**
+     * 解析上传的Excel/CSV文件 (服务端解析解决编码问题)
+     * @param {String} fileBase64 
+     */
+    async parseExcelFile(fileBase64) {
+        if (!fileBase64) throw new Error('文件内容为空');
+        
+        // Convert base64 to buffer
+        const buf = Buffer.from(fileBase64, 'base64');
+        const hex = buf.toString('hex').toUpperCase();
+        
+        let workbook;
+        
+        // 1. Binary Excel (.xlsx/.xls)
+        if (hex.startsWith('504B0304') || hex.startsWith('D0CF11E0')) {
+             workbook = XLSX.read(buf, { type: 'buffer' });
+        } else {
+             // 2. CSV / Text
+             // 智能检测 GBK: 检查 "商品"(C9CCC6B7) 或 "编码"(B1E0C2EB) 或 "批发"(C5FAC2A2)
+             let isGbk = false;
+             if (hex.includes('C9CCC6B7') || hex.includes('B1E0C2EB') || hex.includes('C5FAC2A2')) {
+                 isGbk = true;
+             }
+             
+             let content;
+             if (isGbk) {
+                 content = iconv.decode(buf, 'gbk');
+             } else {
+                 // 尝试 UTF-8
+                 content = buf.toString('utf8');
+                 // 如果 UTF-8 出现大量乱码特征, 且不是 GBK, 可能是 Latin1? 
+                 // 但通常 CSV 只有 UTF-8 或 GBK (在中国).
+                 // 简单的兜底: 如果解析出来没有中文关键字，尝试用 GBK 再解一次?
+                 if (!content.includes('商品') && !content.includes('编码')) {
+                      const contentTryGbk = iconv.decode(buf, 'gbk');
+                      if (contentTryGbk.includes('商品') || contentTryGbk.includes('编码')) {
+                          content = contentTryGbk;
+                      }
+                 }
+             }
+             workbook = XLSX.read(content, { type: 'string' });
+        }
+        
+        if (!workbook || !workbook.SheetNames.length) {
+            throw new Error('无法解析Excel/CSV文件');
+        }
+
+        const sheetName = workbook.SheetNames[0];
+        return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+    },
+
+    /**
      * 批量导入
      * @param {Array} items [{ company_code, name, wholesale_price, manufacturer }]
      */
@@ -266,7 +319,7 @@ module.exports = {
      * @param {Number} skip 
      * @param {Number} limit 
      */
-    async search(keyword, skip = 0, limit = 20) {
+    async search(keyword, skip = 0, limit = 10) {
         if (!keyword) return [];
         
         // 模糊查询: 名称 或 编码
