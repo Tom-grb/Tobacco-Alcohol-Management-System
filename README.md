@@ -1,8 +1,8 @@
-# 烟酒管理系统 (FzhProject)
+# 烟酒管理系统 (Tobacco & Alcohol Management System)
 
 ## 📋 项目概述
 
-这是为家人开发的轻量小程序，开发完成后便顺手做了开源分享。虽功能尚属简约，但希望能为有同类需求的朋友提供一点参考与帮助。FzhProject 是基于 UNI-APP 框架开发的烟酒管理系统，可实现香烟、酒水的库存管理、数据导入及详情查看等核心功能，支持小程序、App 等多端部署，后端采用支付宝云函数与数据库搭建。
+这是为家人开发的轻量小程序，开发完成后便顺手做了开源分享。虽功能尚属简约，但希望能为有同类需求的朋友提供一点参考与帮助。(Tobacco & Alcohol Management System 是基于 UNI-APP 框架开发的烟酒管理系统，可实现香烟、酒水的库存管理、数据导入及详情查看等核心功能，支持小程序、App 等多端部署，后端采用支付宝云函数与数据库搭建。
 
 **应用名称**: 烟酒管理系统  
 **项目版本**: 1.0.0  
@@ -15,9 +15,9 @@
 
 以下是应用在不同页面的实际运行截图：
 
-<img src="img/464e998bf0c647f18fb1d6ca9a5da7ca.jpg" width="50%"> <img src="img/82c8ec7a1bebaf8dfa600471b8e8f1b1.jpg" width="50%"> <img src="img/90ba570755febba0262e4f4b5365ec11.jpg" width="50%">
+<img src="img/464e998bf0c647f18fb1d6ca9a5da7ca.jpg" width="20%"> <img src="img/90ba570755febba0262e4f4b5365ec11.jpg" width="20%"> <img src="img/82c8ec7a1bebaf8dfa600471b8e8f1b1.jpg" width="20%"> 
 
-<img src="img/ca93a2f6c93e4fdc92e90b59ad203c6a.jpg" width="50%"> <img src="img/f14e630657b72b758edf196355480d49.jpg" width="50%">
+<img src="img/ca93a2f6c93e4fdc92e90b59ad203c6a.jpg" width="20%"> <img src="img/f14e630657b72b758edf196355480d49.jpg" width="20%">
 
 ---
 
@@ -49,7 +49,7 @@
 ## 📁 项目结构
 
 ```
-FzhProject/
+(Tobacco & Alcohol Management System/
 ├── pages/                      # 页面文件夹
 │   ├── index/                  # 首页
 │   │   └── index.vue          # 首页入口
@@ -153,7 +153,7 @@ FzhProject/
 1. **克隆项目**
    ```bash
    git clone <项目地址>
-   cd FzhProject
+   cd (Tobacco & Alcohol Management System
    ```
 
 2. **安装依赖**
