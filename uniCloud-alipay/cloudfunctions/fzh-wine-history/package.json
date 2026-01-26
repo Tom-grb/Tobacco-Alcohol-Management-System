@@ -1,9 +1,11 @@
 {
-  "name": "fzh-wine",
+  "name": "fzh-wine-history",
   "version": "1.0.0",
-  "description": "酒水管理云对象",
   "main": "index.obj.js",
   "dependencies": {
     "jsonwebtoken": "^9.0.3"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
   }
 }

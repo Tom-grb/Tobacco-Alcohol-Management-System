@@ -12,7 +12,7 @@
         <text class="icon-emoji">📄</text>
       </view>
       <text class="upload-text">点击选择文件</text>
-      <text class="upload-hint">自动识别：商品编码、商品、批发价、厂家名称</text>
+      <text class="upload-hint">自动识别：商品、批发价、厂家名称</text>
     </view>
 
     <!-- Processing State -->
@@ -53,7 +53,6 @@
                 </view>
                 <view class="log-info">
                     <text class="log-name">{{ log.name }}</text>
-                    <text class="log-code">{{ log.code }}</text>
                 </view>
             </view>
             
@@ -196,14 +195,12 @@ export default {
             console.log('Header Row:', header);
 
             // 2. 查找关键列索引 (统一使用严格正则匹配)
-            const idxCode = header.findIndex(h => /^(商品编码)$/.test(h));
             const idxName = header.findIndex(h => /^(商品)$/.test(h));
             const idxPrice = header.findIndex(h => /^(批发价)$/.test(h));
             const idxManufacturer = header.findIndex(h => /^(厂家名称)$/.test(h));
 
-            if (idxCode === -1 || idxName === -1 || idxPrice === -1) {
+            if (idxName === -1 || idxPrice === -1) {
                 let missing = [];
-                if (idxCode === -1) missing.push('商品编码');
                 if (idxName === -1) missing.push('商品');
                 if (idxPrice === -1) missing.push('批发价');
                 
@@ -218,22 +215,19 @@ export default {
 
             // 3. 提取数据（从第二行开始）
             const items = rows.slice(1).map(row => {
-                const code = row[idxCode];
                 const name = row[idxName];
                 const price = row[idxPrice];
                 const manufacturer = idxManufacturer > -1 ? row[idxManufacturer] : '';
 
-                if (!code && !name) return null;
+                if (!name) return null;
 
                 return {
-                     company_code: code,
                      name: name,
                      wholesale_price: price,
                      manufacturer: manufacturer
                 };
             }).filter(item => {
                 return item && 
-                       item.company_code && 
                        item.name && 
                        item.wholesale_price !== undefined && 
                        item.wholesale_price !== null &&

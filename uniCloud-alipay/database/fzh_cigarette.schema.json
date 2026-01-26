@@ -1,6 +1,6 @@
 {
 	"bsonType": "object",
-	"required": ["company_code", "name", "wholesale_price"],
+	"required": ["name", "wholesale_price"],
 	"permission": {
 		"read": true,
 		"create": true,
@@ -11,16 +11,17 @@
 		"_id": {
 			"description": "ID，系统自动生成"
 		},
+		"user_id": {
+			"bsonType": "string",
+			"description": "用户ID",
+			"forceDefaultValue": {
+				"$env": "uid"
+			}
+		},
 		"image_url": {
 			"bsonType": "string",
 			"description": "图片地址",
 			"title": "图片"
-		},
-		"company_code": {
-			"bsonType": "string",
-			"description": "公司编码",
-			"title": "公司编码",
-            "trim": "both"
 		},
 		"name": {
 			"bsonType": "string",

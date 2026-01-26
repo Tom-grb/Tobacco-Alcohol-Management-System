@@ -13,7 +13,7 @@
              
              <view class="user-profile" @click.stop="toggleLogout">
                 <!-- 模拟头像 -->
-                <view class="avatar-circle">丰</view>
+                <view class="avatar-circle">{{ avatarText }}</view>
             </view>
         </view>
       </view>
@@ -82,7 +82,6 @@
                 <!-- 中间信息 -->
                 <view class="item-info">
                     <text class="item-name">{{ item.name }}</text>
-                    <text class="item-code" v-if="item.type !== 'wine'">{{ item.company_code }}</text>
                 </view>
                 
                 <!-- 右侧价格 (仅香烟显示批发价) -->
@@ -329,7 +328,6 @@ export default {
       // Cigarette Export
       showCigaretteExportModal: false,
       cigaretteFields: [
-          { key: 'company_code', label: '商品编码', checked: false },
           { key: 'wholesale_price', label: '批发价', checked: false },
           { key: 'purchase_price', label: '收货价', checked: false },
           { key: 'retail_price', label: '零售价', checked: false },
@@ -338,7 +336,9 @@ export default {
       
       // Download Modal
       showDownloadModal: false,
-      downloadUrl: ''
+      downloadUrl: '',
+      
+      avatarText: '丰'
     };
   },
   onLoad() {
@@ -347,8 +347,19 @@ export default {
       if (history) {
           this.historyList = JSON.parse(history);
       }
+      
+      // 设置用户头像
+      const userInfo = uni.getStorageSync('userInfo');
+      if (userInfo && userInfo.username) {
+          this.avatarText = userInfo.username.charAt(0).toUpperCase();
+      }
   },
   onShow() {
+      // 检查登录状态，未登录则不发起请求，避免报错
+      if (uni.$checkLogin && !uni.$checkLogin()) {
+          return;
+      }
+      
       this.fetchCounts();
       // 如果处于搜索模式且有关键词，每次显示页面时刷新搜索结果
       if (this.isSearchMode && this.keyword) {

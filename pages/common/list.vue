@@ -25,11 +25,6 @@
                             <text class="good-name">{{ item.name }}</text>
                         </view>
                         <view class="card-row-bottom">
-                            <view class="code-box" v-if="item.company_code">
-                                <text class="label">编码</text>
-                                <text class="value">{{ item.company_code }}</text>
-                            </view>
-                            
                             <!-- 酒水可能没有批发价，也可以显示 -->
                             <view class="price-box" v-if="item.wholesale_price || item.wholesale_price === 0">
                                 <text class="label">批发</text>
@@ -83,6 +78,12 @@ export default {
         if (options.type) {
             this.type = options.type;
         }
+    },
+    onShow() {
+        // 每次显示时刷新数据（确保数据最新）
+        // 如果未登录，则不加载，交给 App.vue 或者 main.js 处理跳转，避免报错
+        if (uni.$checkLogin && !uni.$checkLogin()) return;
+        
         this.fetchData();
     },
     methods: {

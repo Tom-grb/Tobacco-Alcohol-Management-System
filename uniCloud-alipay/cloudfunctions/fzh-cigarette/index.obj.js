@@ -4,14 +4,39 @@ const db = uniCloud.database();
 const dbCmd = db.command;
 const XLSX = require('xlsx');
 const iconv = require('iconv-lite');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = 'fzh-project-secret-key-2026';
 
 module.exports = {
-	_before: function () { // 通用预处理器
-        // 简单的鉴权
-        // const token = this.getUniIdToken();
-        // if(!token) {
-        //     throw new Error('未登录');
-        // }
+	_before: async function () { // 通用预处理器
+        this.startTime = Date.now();
+        const token = this.getUniIdToken();
+        if(!token) {
+            const err = new Error('未登录');
+            err.errCode = 'TOKEN_INVALID';
+            throw err;
+        }
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            this.uid = decoded.uid;
+            
+            // 校验用户是否存在
+            const userRes = await db.collection('fzh_user').where({
+                _id: this.uid
+            }).count();
+            
+            if (userRes.total === 0) {
+                const err = new Error('用户不存在或已被删除');
+                err.errCode = 'TOKEN_INVALID';
+                throw err;
+            }
+            
+        } catch (err) {
+            const e = new Error('登录校验失败：' + err.message);
+            e.errCode = 'TOKEN_INVALID';
+            throw e;
+        }
 	},
     
     /**
@@ -19,17 +44,16 @@ module.exports = {
      * @param {Object} params 
      */
 	async add(params) {
-		const { image_url, company_code, name, wholesale_price, purchase_price, retail_price } = params;
+		const { image_url, name, wholesale_price, purchase_price, retail_price } = params;
         
-        if (!company_code) throw new Error('请输入公司编码');
         if (!name) throw new Error('请输入香烟名称');
         if (!wholesale_price) throw new Error('请输入批发价');
 
         const now = Date.now();
         
         let addData = {
+            user_id: this.uid,
             image_url: image_url || '', // 选填
-            company_code,
             name,
             wholesale_price: parseFloat(wholesale_price),
             wholesale_price_updated_at: now,
@@ -65,7 +89,10 @@ module.exports = {
     async get(id) {
         if (!id) throw new Error('ID不能为空');
         
-        const res = await db.collection('fzh_cigarette').doc(id).get();
+        const res = await db.collection('fzh_cigarette').where({
+            _id: id,
+            user_id: this.uid
+        }).get();
         if (res.data && res.data.length > 0) {
             return res.data[0];
         }
@@ -77,11 +104,14 @@ module.exports = {
      * @param {Object} params 
      */
     async update(params) {
-        const { id, image_url, company_code, name, wholesale_price, purchase_price, retail_price } = params;
+        const { id, image_url, name, wholesale_price, purchase_price, retail_price } = params;
         
         if (!id) throw new Error('ID不能为空');
 
-        const oldDataRes = await db.collection('fzh_cigarette').doc(id).get();
+        const oldDataRes = await db.collection('fzh_cigarette').where({
+            _id: id,
+            user_id: this.uid
+        }).get();
         if (!oldDataRes.data || oldDataRes.data.length === 0) {
             throw new Error('数据不存在');
         }
@@ -95,7 +125,6 @@ module.exports = {
         // 图片现在是选填，如果传了就更新，没传如果是空字符串也更新（比如删除图片场景，暂时这里只处理有值情况或显式更新）
         // 这里假设前端传什么就更什么
         if (image_url !== undefined) updateData.image_url = image_url;
-        if (company_code) updateData.company_code = company_code;
         if (name) updateData.name = name;
 
         // 检查价格变化，更新对应的时间戳
@@ -124,7 +153,10 @@ module.exports = {
              }
         }
 
-        await db.collection('fzh_cigarette').doc(id).update(updateData);
+        await db.collection('fzh_cigarette').where({
+            _id: id,
+            user_id: this.uid
+        }).update(updateData);
         
         return {
             msg: '更新成功'
@@ -137,7 +169,10 @@ module.exports = {
      */
     async delete(id) {
         if (!id) throw new Error('ID不能为空');
-        await db.collection('fzh_cigarette').doc(id).remove();
+        const res = await db.collection('fzh_cigarette').where({
+            _id: id,
+            user_id: this.uid
+        }).remove();
         return {
             msg: '删除成功'
         }
@@ -196,7 +231,7 @@ module.exports = {
 
     /**
      * 批量导入
-     * @param {Array} items [{ company_code, name, wholesale_price, manufacturer }]
+     * @param {Array} items [{ name, wholesale_price, manufacturer }]
      */
     async batchImport(items) {
         if (!items || items.length === 0) return { total: 0, updated: 0, added: 0, logs: [] };
@@ -206,37 +241,37 @@ module.exports = {
         let updated = 0;
         const now = Date.now();
 
-        // 1. 收集所有 Company Codes
-        const codes = items.map(i => String(i.company_code).trim()).filter(c => c);
-        if (codes.length === 0) return { total: 0, updated: 0, added: 0, logs: [], msg: '有效数据为空' };
+        // 1. 收集所有 Names
+        const names = items.map(i => String(i.name).trim()).filter(c => c);
+        if (names.length === 0) return { total: 0, updated: 0, added: 0, logs: [], msg: '有效数据为空' };
 
         // 2. 分批查询现有数据
         const existingMap = new Map();
         const CHUNK_SIZE = 100;
-        for (let i = 0; i < codes.length; i += CHUNK_SIZE) {
-             const chunk = codes.slice(i, i + CHUNK_SIZE);
+        for (let i = 0; i < names.length; i += CHUNK_SIZE) {
+             const chunk = names.slice(i, i + CHUNK_SIZE);
              if (chunk.length === 0) continue;
              const { data } = await db.collection('fzh_cigarette')
                 .where({
-                    company_code: dbCmd.in(chunk)
+                    user_id: this.uid,
+                    name: dbCmd.in(chunk)
                 })
                 .limit(1000)
                 .get();
              data.forEach(item => {
-                 existingMap.set(item.company_code, item);
+                 existingMap.set(item.name, item);
              });
         }
 
         // 3. 遍历处理
         for (const item of items) {
-            const code = String(item.company_code).trim();
             const name = String(item.name || '').trim();
             const manufacturer = String(item.manufacturer || '').trim(); 
             const price = parseFloat(item.wholesale_price);
             
-            if (!code || !name || isNaN(price)) continue;
+            if (!name || isNaN(price)) continue;
 
-            const existing = existingMap.get(code);
+            const existing = existingMap.get(name);
             
             if (existing) {
                 // Check for updates
@@ -258,7 +293,6 @@ module.exports = {
                     logs.push({
                          type: 'update',
                          name: name,
-                         code: code,
                          old_price: oldPrice,
                          new_price: price,
                          change: priceChange
@@ -270,10 +304,6 @@ module.exports = {
                      updateData.manufacturer = manufacturer;
                 }
                 
-                if (name && existing.name !== name) {
-                     hasChange = true;
-                     updateData.name = name;
-                }
 
                 if (hasChange) {
                     updated++;
@@ -283,7 +313,7 @@ module.exports = {
             } else {
                 // Add new
                 const newData = {
-                    company_code: code,
+                    user_id: this.uid,
                     name: name,
                     manufacturer: manufacturer,
                     wholesale_price: price,
@@ -298,7 +328,6 @@ module.exports = {
                 logs.push({
                     type: 'add',
                     name: name,
-                    code: code,
                     new_price: price
                 });
             }
@@ -322,12 +351,12 @@ module.exports = {
     async search(keyword, skip = 0, limit = 10) {
         if (!keyword) return [];
         
-        // 模糊查询: 名称 或 编码
+        // 模糊查询: 名称
         const regex = new RegExp(keyword, 'i');
         const res = await db.collection('fzh_cigarette').where(
-            dbCmd.or([
-                { name: regex },
-                { company_code: regex }
+            dbCmd.and([
+                { user_id: this.uid },
+                { name: regex }
             ])
         ).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
         
@@ -338,7 +367,9 @@ module.exports = {
      * 获取香烟总数
      */
     async count() {
-        const res = await db.collection('fzh_cigarette').count();
+        const res = await db.collection('fzh_cigarette').where({
+            user_id: this.uid
+        }).count();
         return res.total;
     },
 
@@ -349,7 +380,10 @@ module.exports = {
         // limit默认20，最大1000。如果要支持更多，需循环获取。
         // 这里暂时实现单次最大获取 1000 条
         const res = await db.collection('fzh_cigarette')
-            .field({ company_code: 1, name: 1, wholesale_price: 1, manufacturer: 1 })
+            .where({
+                user_id: this.uid
+            })
+            .field({ name: 1, wholesale_price: 1, manufacturer: 1 })
             .limit(1000)
             .get();
         return res.data;

@@ -20,19 +20,6 @@
 
     <view class="form-container">
        <view class="form-group">
-            <!-- Company Code -->
-            <view class="form-item">
-                <text class="label">公司编码</text>
-                <input 
-                    class="input" 
-                    v-model="formData.company_code" 
-                    placeholder="请输入编码" 
-                    :disabled="isViewMode"
-                    placeholder-class="placeholder"
-                />
-            </view>
-            <view class="divider"></view>
-            
             <!-- Name -->
             <view class="form-item">
                 <text class="label">香烟名称</text>
@@ -155,7 +142,6 @@ const loading = ref(false);
 
 const formData = reactive({
     image_url: '',
-    company_code: '',
     name: '',
     wholesale_price: '',
     purchase_price: '',
@@ -336,11 +322,7 @@ const uploadImage = async (filePath) => {
 const submit = async () => {
     // Validate
     // 图片、收货价、零售价 选填
-    // 只有 公司编码、香烟名称、批发价 必填
-    if (!formData.company_code) {
-        uni.showToast({ title: '请输入公司编码', icon: 'none' });
-        return;
-    }
+    // 香烟名称、批发价 必填
     if (!formData.name) {
         uni.showToast({ title: '请输入香烟名称', icon: 'none' });
         return;
@@ -363,7 +345,6 @@ const submit = async () => {
         if (mode.value === 'add') {
             await fzhCigarette.add({
                 image_url: formData.image_url,
-                company_code: formData.company_code,
                 name: formData.name,
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
@@ -375,7 +356,6 @@ const submit = async () => {
             await fzhCigarette.update({
                 id: id.value,
                 image_url: formData.image_url,
-                company_code: formData.company_code,
                 name: formData.name,
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,

@@ -15,9 +15,9 @@
 
 以下是应用在不同页面的实际运行截图：
 
-![](img/464e998bf0c647f18fb1d6ca9a5da7ca.jpg) ![](img/82c8ec7a1bebaf8dfa600471b8e8f1b1.jpg) ![](img/90ba570755febba0262e4f4b5365ec11.jpg)
+<img src="img/464e998bf0c647f18fb1d6ca9a5da7ca.jpg" width="50%"> <img src="img/82c8ec7a1bebaf8dfa600471b8e8f1b1.jpg" width="50%"> <img src="img/90ba570755febba0262e4f4b5365ec11.jpg" width="50%">
 
-![](img/ca93a2f6c93e4fdc92e90b59ad203c6a.jpg) ![](img/f14e630657b72b758edf196355480d49.jpg)
+<img src="img/ca93a2f6c93e4fdc92e90b59ad203c6a.jpg" width="50%"> <img src="img/f14e630657b72b758edf196355480d49.jpg" width="50%">
 
 ---
 

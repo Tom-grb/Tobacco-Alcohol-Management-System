@@ -1,10 +1,38 @@
 // 云对象教程: https://uniapp.dcloud.net.cn/uniCloud/cloud-obj
 const db = uniCloud.database();
 const dbCmd = db.command;
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = 'fzh-project-secret-key-2026';
 
 module.exports = {
-	_before: function () {
-        // 通用预处理器
+	_before: async function () {
+        this.startTime = Date.now();
+        const token = this.getUniIdToken();
+        if(!token) {
+            const err = new Error('未登录');
+            err.errCode = 'TOKEN_INVALID';
+            throw err;
+        }
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            this.uid = decoded.uid;
+            
+            // 校验用户是否存在
+            const userRes = await db.collection('fzh_user').where({
+                _id: this.uid
+            }).count();
+            
+            if (userRes.total === 0) {
+                const err = new Error('用户不存在或已被删除');
+                err.errCode = 'TOKEN_INVALID';
+                throw err;
+            }
+        } catch (err) {
+            const e = new Error('登录校验失败：' + err.message);
+            e.errCode = 'TOKEN_INVALID';
+            throw e;
+        }
 	},
     
     /**
@@ -20,6 +48,7 @@ module.exports = {
         const now = Date.now();
         
         let addData = {
+            user_id: this.uid,
             image_url: image_url || '',
             name,
             created_at: now,
@@ -39,8 +68,10 @@ module.exports = {
      */
     async get(id) {
         if (!id) throw new Error('ID不能为空');
-        
-        const res = await db.collection('fzh_wine').doc(id).get();
+        const res = await db.collection('fzh_wine').where({
+            _id: id,
+            user_id: this.uid
+        }).get();
         if (res.data && res.data.length > 0) {
             return res.data[0];
         }
@@ -63,7 +94,10 @@ module.exports = {
         if (image_url !== undefined) updateData.image_url = image_url;
         if (name) updateData.name = name;
 
-        await db.collection('fzh_wine').doc(id).update(updateData);
+        await db.collection('fzh_wine').where({
+            _id: id,
+            user_id: this.uid
+        }).update(updateData);
         
         return {
             msg: '更新成功'
@@ -75,7 +109,10 @@ module.exports = {
      */
     async delete(id) {
         if (!id) throw new Error('ID不能为空');
-        await db.collection('fzh_wine').doc(id).remove();
+        await db.collection('fzh_wine').where({
+            _id: id,
+            user_id: this.uid
+        }).remove();
         return {
             msg: '删除成功'
         }
@@ -91,19 +128,25 @@ module.exports = {
         if (!keyword) return [];
         const regex = new RegExp(keyword, 'i');
         const res = await db.collection('fzh_wine').where({
+            user_id: this.uid,
             name: regex
         }).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
         return res.data;
     },
 
     async count() {
-        const res = await db.collection('fzh_wine').count();
+        const res = await db.collection('fzh_wine').where({
+            user_id: this.uid
+        }).count();
         return res.total;
     },
 
     async getAll() {
         const res = await db.collection('fzh_wine')
-            .field({ name: 1, company_code: 1, wholesale_price: 1 })
+            .where({
+                user_id: this.uid
+            })
+            .field({ name: 1, wholesale_price: 1 })
             .limit(1000)
             .get();
         return res.data;
