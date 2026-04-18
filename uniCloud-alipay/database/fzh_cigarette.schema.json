@@ -53,6 +53,15 @@
             "bsonType": "timestamp",
             "description": "收货价更新时间"
         },
+		"company_price": {
+			"bsonType": "double",
+			"description": "公司价",
+			"title": "公司价"
+		},
+        "company_price_updated_at": {
+            "bsonType": "timestamp",
+            "description": "公司价更新时间"
+        },
 		"retail_price": {
 			"bsonType": "double",
 			"description": "零售价",

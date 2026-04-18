@@ -72,6 +72,25 @@
             </view>
             <view class="divider"></view>
 
+            <!-- Company Price -->
+            <view class="form-item-col">
+                <view class="row-main">
+                    <text class="label">公司价</text>
+                    <input 
+                        class="input price-input" 
+                        type="digit"
+                        v-model="formData.company_price" 
+                        placeholder="0.00" 
+                        :disabled="isViewMode"
+                        placeholder-class="placeholder"
+                    />
+                </view>
+                <text v-if="isViewMode && formData.company_price_updated_at" class="update-time">
+                    更新于: {{ formatDate(formData.company_price_updated_at) }}
+                </text>
+            </view>
+            <view class="divider"></view>
+
             <!-- Retail Price -->
             <view class="form-item-col">
                 <view class="row-main">
@@ -145,9 +164,11 @@ const formData = reactive({
     name: '',
     wholesale_price: '',
     purchase_price: '',
+    company_price: '',
     retail_price: '',
     wholesale_price_updated_at: null,
     purchase_price_updated_at: null,
+    company_price_updated_at: null,
     retail_price_updated_at: null
 });
 
@@ -348,6 +369,7 @@ const submit = async () => {
                 name: formData.name,
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
+                company_price: formData.company_price,
                 retail_price: formData.retail_price
             });
             uni.showToast({ title: '添加成功', icon: 'success' });
@@ -359,6 +381,7 @@ const submit = async () => {
                 name: formData.name,
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
+                company_price: formData.company_price,
                 retail_price: formData.retail_price
             });
             uni.showToast({ title: '更新成功', icon: 'success' });

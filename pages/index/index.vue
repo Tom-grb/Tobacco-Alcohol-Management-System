@@ -330,6 +330,7 @@ export default {
       cigaretteFields: [
           { key: 'wholesale_price', label: '批发价', checked: false },
           { key: 'purchase_price', label: '收货价', checked: false },
+          { key: 'company_price', label: '公司价', checked: false },
           { key: 'retail_price', label: '零售价', checked: false },
           { key: 'manufacturer', label: '厂家名称', checked: false }
       ],

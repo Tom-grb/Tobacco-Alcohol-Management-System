@@ -44,7 +44,7 @@ module.exports = {
      * @param {Object} params 
      */
 	async add(params) {
-		const { image_url, name, wholesale_price, purchase_price, retail_price } = params;
+		const { image_url, name, wholesale_price, purchase_price, company_price, retail_price } = params;
         
         if (!name) throw new Error('请输入香烟名称');
         if (!wholesale_price) throw new Error('请输入批发价');
@@ -60,6 +60,7 @@ module.exports = {
             
             // 选填字段处理：默认为0，仅当有值时设置更新时间，避免传 null 给 timestamp 类型字段报错
             purchase_price: purchase_price ? parseFloat(purchase_price) : 0,
+            company_price: company_price ? parseFloat(company_price) : 0,
             retail_price: retail_price ? parseFloat(retail_price) : 0,
 
             created_at: now,
@@ -68,6 +69,10 @@ module.exports = {
 
         if (purchase_price) {
             addData.purchase_price_updated_at = now;
+        }
+        
+        if (company_price) {
+            addData.company_price_updated_at = now;
         }
         
         if (retail_price) {
@@ -104,7 +109,7 @@ module.exports = {
      * @param {Object} params 
      */
     async update(params) {
-        const { id, image_url, name, wholesale_price, purchase_price, retail_price } = params;
+        const { id, image_url, name, wholesale_price, purchase_price, company_price, retail_price } = params;
         
         if (!id) throw new Error('ID不能为空');
 
@@ -142,6 +147,14 @@ module.exports = {
              if(newPurchase !== oldData.purchase_price) {
                  updateData.purchase_price = newPurchase;
                  updateData.purchase_price_updated_at = now;
+             }
+        }
+        
+        if (company_price !== undefined) {
+             const newCompany = company_price ? parseFloat(company_price) : 0;
+             if(newCompany !== oldData.company_price) {
+                 updateData.company_price = newCompany;
+                 updateData.company_price_updated_at = now;
              }
         }
         
