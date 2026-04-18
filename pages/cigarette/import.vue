@@ -12,7 +12,7 @@
         <text class="icon-emoji">📄</text>
       </view>
       <text class="upload-text">点击选择文件</text>
-      <text class="upload-hint">自动识别：商品、批发价、厂家名称</text>
+      <text class="upload-hint">自动识别：商品、厂家名称、公司价、零售价</text>
     </view>
 
     <!-- Processing State -->
@@ -196,13 +196,14 @@ export default {
 
             // 2. 查找关键列索引 (统一使用严格正则匹配)
             const idxName = header.findIndex(h => /^(商品)$/.test(h));
-            const idxPrice = header.findIndex(h => /^(批发价)$/.test(h));
+            const idxPrice = header.findIndex(h => /^(公司价)$/.test(h));
             const idxManufacturer = header.findIndex(h => /^(厂家名称)$/.test(h));
+            const idxRetailPrice = header.findIndex(h => /^(零售价)$/.test(h));
 
             if (idxName === -1 || idxPrice === -1) {
                 let missing = [];
                 if (idxName === -1) missing.push('商品');
-                if (idxPrice === -1) missing.push('批发价');
+                if (idxPrice === -1) missing.push('公司价');
                 
                 uni.showModal({
                     title: '表头识别失败',
@@ -218,20 +219,22 @@ export default {
                 const name = row[idxName];
                 const price = row[idxPrice];
                 const manufacturer = idxManufacturer > -1 ? row[idxManufacturer] : '';
+                const retailPrice = idxRetailPrice > -1 ? row[idxRetailPrice] : '';
 
                 if (!name) return null;
 
                 return {
                      name: name,
-                     wholesale_price: price,
+                     company_price: price,
+                     retail_price: retailPrice,
                      manufacturer: manufacturer
                 };
             }).filter(item => {
                 return item && 
                        item.name && 
-                       item.wholesale_price !== undefined && 
-                       item.wholesale_price !== null &&
-                       String(item.wholesale_price).trim() !== '';
+                       item.company_price !== undefined && 
+                       item.company_price !== null &&
+                       String(item.company_price).trim() !== '';
             });
 
             if (items.length === 0) {

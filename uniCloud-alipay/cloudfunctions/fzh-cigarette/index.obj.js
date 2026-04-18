@@ -44,7 +44,7 @@ module.exports = {
      * @param {Object} params 
      */
 	async add(params) {
-		const { image_url, name, wholesale_price, purchase_price, company_price, retail_price } = params;
+		const { image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price } = params;
         
         if (!name) throw new Error('请输入香烟名称');
         if (!wholesale_price) throw new Error('请输入批发价');
@@ -55,6 +55,7 @@ module.exports = {
             user_id: this.uid,
             image_url: image_url || '', // 选填
             name,
+            manufacturer: manufacturer || '',
             wholesale_price: parseFloat(wholesale_price),
             wholesale_price_updated_at: now,
             
@@ -109,7 +110,7 @@ module.exports = {
      * @param {Object} params 
      */
     async update(params) {
-        const { id, image_url, name, wholesale_price, purchase_price, company_price, retail_price } = params;
+        const { id, image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price } = params;
         
         if (!id) throw new Error('ID不能为空');
 
@@ -131,6 +132,7 @@ module.exports = {
         // 这里假设前端传什么就更什么
         if (image_url !== undefined) updateData.image_url = image_url;
         if (name) updateData.name = name;
+        if (manufacturer !== undefined) updateData.manufacturer = manufacturer;
 
         // 检查价格变化，更新对应的时间戳
         if (wholesale_price !== undefined && parseFloat(wholesale_price) !== oldData.wholesale_price) {
@@ -209,9 +211,9 @@ module.exports = {
              workbook = XLSX.read(buf, { type: 'buffer' });
         } else {
              // 2. CSV / Text
-             // 智能检测 GBK: 检查 "商品"(C9CCC6B7) 或 "编码"(B1E0C2EB) 或 "批发"(C5FAC2A2)
+             // 智能检测 GBK: 检查 "商品"(C9CCC6B7) 或 "编码"(B1E0C2EB) 或 "批发"(C5FAC2A2) 或 "公司价"(B9ABCBBEBCCB) 或 "零售价"
              let isGbk = false;
-             if (hex.includes('C9CCC6B7') || hex.includes('B1E0C2EB') || hex.includes('C5FAC2A2')) {
+             if (hex.includes('C9CCC6B7') || hex.includes('B1E0C2EB') || hex.includes('C5FAC2A2') || hex.includes('B9ABCBBEBCCB') || hex.includes('C1E3CADB')) {
                  isGbk = true;
              }
              
@@ -244,7 +246,7 @@ module.exports = {
 
     /**
      * 批量导入
-     * @param {Array} items [{ name, wholesale_price, manufacturer }]
+     * @param {Array} items [{ name, company_price, retail_price, manufacturer }]
      */
     async batchImport(items) {
         if (!items || items.length === 0) return { total: 0, updated: 0, added: 0, logs: [] };
@@ -280,7 +282,7 @@ module.exports = {
         for (const item of items) {
             const name = String(item.name || '').trim();
             const manufacturer = String(item.manufacturer || '').trim(); 
-            const price = parseFloat(item.wholesale_price);
+            const price = parseFloat(item.company_price);
             
             if (!name || isNaN(price)) continue;
 
@@ -290,18 +292,18 @@ module.exports = {
                 // Check for updates
                 let hasChange = false;
                 let priceChange = 0; // 0: none, 1: up, -1: down
-                let oldPrice = existing.wholesale_price;
+                let oldPrice = existing.company_price || 0;
                 
                 const updateData = { updated_at: now };
                 
                 // 价格变动
-                if (existing.wholesale_price !== price) {
+                if (existing.company_price !== price) {
                     hasChange = true;
-                    if (price > existing.wholesale_price) priceChange = 1;
+                    if (price > oldPrice) priceChange = 1;
                     else priceChange = -1;
                     
-                    updateData.wholesale_price = price;
-                    updateData.wholesale_price_updated_at = now;
+                    updateData.company_price = price;
+                    updateData.company_price_updated_at = now;
                     
                     logs.push({
                          type: 'update',
@@ -317,6 +319,15 @@ module.exports = {
                      updateData.manufacturer = manufacturer;
                 }
                 
+                // 零售价变动 (如果有传)
+                if (item.retail_price !== undefined && item.retail_price !== null && String(item.retail_price).trim() !== '') {
+                    const retailPrice = parseFloat(item.retail_price);
+                    if (!isNaN(retailPrice) && existing.retail_price !== retailPrice) {
+                        hasChange = true;
+                        updateData.retail_price = retailPrice;
+                        updateData.retail_price_updated_at = now;
+                    }
+                }
 
                 if (hasChange) {
                     updated++;
@@ -325,17 +336,29 @@ module.exports = {
 
             } else {
                 // Add new
+                let parsedRetailPrice = 0;
+                if (item.retail_price !== undefined && item.retail_price !== null && String(item.retail_price).trim() !== '') {
+                    parsedRetailPrice = parseFloat(item.retail_price);
+                    parsedRetailPrice = isNaN(parsedRetailPrice) ? 0 : parsedRetailPrice;
+                }
+
                 const newData = {
                     user_id: this.uid,
                     name: name,
                     manufacturer: manufacturer,
-                    wholesale_price: price,
-                    wholesale_price_updated_at: now,
+                    company_price: price,
+                    company_price_updated_at: now,
+                    wholesale_price: 0,
                     purchase_price: 0,
-                    retail_price: 0,
+                    retail_price: parsedRetailPrice,
                     created_at: now,
                     updated_at: now
                 };
+                
+                if (parsedRetailPrice > 0) {
+                    newData.retail_price_updated_at = now;
+                }
+
                 await db.collection('fzh_cigarette').add(newData);
                 added++;
                 logs.push({

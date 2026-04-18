@@ -31,6 +31,18 @@
                     placeholder-class="placeholder"
                 />
             </view>
+            <view class="divider"></view>
+            <!-- Manufacturer -->
+            <view class="form-item">
+                <text class="label">厂家名称</text>
+                <input 
+                    class="input" 
+                    v-model="formData.manufacturer" 
+                    placeholder="请输入厂家名称" 
+                    :disabled="isViewMode"
+                    placeholder-class="placeholder"
+                />
+            </view>
        </view>
 
        <view class="form-group">
@@ -162,6 +174,7 @@ const loading = ref(false);
 const formData = reactive({
     image_url: '',
     name: '',
+    manufacturer: '',
     wholesale_price: '',
     purchase_price: '',
     company_price: '',
@@ -367,6 +380,7 @@ const submit = async () => {
             await fzhCigarette.add({
                 image_url: formData.image_url,
                 name: formData.name,
+                manufacturer: formData.manufacturer,
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
                 company_price: formData.company_price,
@@ -379,6 +393,7 @@ const submit = async () => {
                 id: id.value,
                 image_url: formData.image_url,
                 name: formData.name,
+                manufacturer: formData.manufacturer,
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
                 company_price: formData.company_price,
