@@ -47,7 +47,6 @@ module.exports = {
 		const { image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price } = params;
         
         if (!name) throw new Error('请输入香烟名称');
-        if (!wholesale_price) throw new Error('请输入批发价');
 
         const now = Date.now();
         
@@ -56,8 +55,7 @@ module.exports = {
             image_url: image_url || '', // 选填
             name,
             manufacturer: manufacturer || '',
-            wholesale_price: parseFloat(wholesale_price),
-            wholesale_price_updated_at: now,
+            wholesale_price: wholesale_price ? parseFloat(wholesale_price) : 0,
             
             // 选填字段处理：默认为0，仅当有值时设置更新时间，避免传 null 给 timestamp 类型字段报错
             purchase_price: purchase_price ? parseFloat(purchase_price) : 0,
@@ -67,6 +65,10 @@ module.exports = {
             created_at: now,
             updated_at: now
         };
+
+        if (wholesale_price) {
+            addData.wholesale_price_updated_at = now;
+        }
 
         if (purchase_price) {
             addData.purchase_price_updated_at = now;
@@ -135,9 +137,12 @@ module.exports = {
         if (manufacturer !== undefined) updateData.manufacturer = manufacturer;
 
         // 检查价格变化，更新对应的时间戳
-        if (wholesale_price !== undefined && parseFloat(wholesale_price) !== oldData.wholesale_price) {
-            updateData.wholesale_price = parseFloat(wholesale_price);
-            updateData.wholesale_price_updated_at = now;
+        if (wholesale_price !== undefined) {
+             const newWholesale = wholesale_price ? parseFloat(wholesale_price) : 0;
+             if(newWholesale !== oldData.wholesale_price) {
+                 updateData.wholesale_price = newWholesale;
+                 updateData.wholesale_price_updated_at = now;
+             }
         }
         
         // 选填字段更新逻辑
@@ -419,7 +424,7 @@ module.exports = {
             .where({
                 user_id: this.uid
             })
-            .field({ name: 1, wholesale_price: 1, manufacturer: 1 })
+            .field({ name: 1, wholesale_price: 1, manufacturer: 1, company_price: 1, retail_price: 1 })
             .limit(1000)
             .get();
         return res.data;

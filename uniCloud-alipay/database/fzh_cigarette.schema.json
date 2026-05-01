@@ -1,6 +1,6 @@
 {
 	"bsonType": "object",
-	"required": ["name", "wholesale_price"],
+	"required": ["name"],
 	"permission": {
 		"read": true,
 		"create": true,

@@ -355,14 +355,10 @@ const uploadImage = async (filePath) => {
 
 const submit = async () => {
     // Validate
-    // 图片、收货价、零售价 选填
-    // 香烟名称、批发价 必填
+    // 所有价格选填
+    // 香烟名称 必填
     if (!formData.name) {
         uni.showToast({ title: '请输入香烟名称', icon: 'none' });
-        return;
-    }
-    if (!formData.wholesale_price) {
-        uni.showToast({ title: '请输入批发价', icon: 'none' });
         return;
     }
 

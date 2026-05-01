@@ -25,10 +25,20 @@
                             <text class="good-name">{{ item.name }}</text>
                         </view>
                         <view class="card-row-bottom">
-                            <!-- 酒水可能没有批发价，也可以显示 -->
-                            <view class="price-box" v-if="item.wholesale_price || item.wholesale_price === 0">
+                            <!-- 酒水的价格展示 -->
+                            <view class="price-box" v-if="type === 'wine' && (item.wholesale_price || item.wholesale_price === 0)">
                                 <text class="label">批发</text>
                                 <text class="value-price">¥{{ item.wholesale_price }}</text>
+                            </view>
+                            
+                            <!-- 香烟显示公司价格和零售价格 -->
+                            <view class="price-box" v-if="type === 'cigarette' && (item.company_price || item.company_price === 0)">
+                                <text class="label">公司价</text>
+                                <text class="value-price">¥{{ item.company_price }}</text>
+                            </view>
+                            <view class="price-box" style="margin-left: 30rpx;" v-if="type === 'cigarette' && (item.retail_price || item.retail_price === 0)">
+                                <text class="label">零售价</text>
+                                <text class="value-price">¥{{ item.retail_price }}</text>
                             </view>
                         </view>
                     </view>
