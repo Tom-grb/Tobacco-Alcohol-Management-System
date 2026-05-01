@@ -82,12 +82,32 @@
                 <!-- 中间信息 -->
                 <view class="item-info">
                     <text class="item-name">{{ item.name }}</text>
-                </view>
-                
-                <!-- 右侧价格 (仅香烟显示批发价) -->
-                <view class="item-price" v-if="item.type !== 'wine'">
-                    <text class="price-label">批发价</text>
-                    <text class="price-value">¥{{ item.wholesale_price }}</text>
+                    <view class="price-grid" v-if="item.type !== 'wine'">
+                        <view class="price-grid-item">
+                            <text class="price-sublabel">零售价</text>
+                            <text class="price-subvalue" :class="{'no-price':!item.retail_price}">
+                                {{ item.retail_price ? '¥' + item.retail_price : '-' }}
+                            </text>
+                        </view>
+                        <view class="price-grid-item">
+                            <text class="price-sublabel">公司价</text>
+                            <text class="price-subvalue" :class="{'no-price':!item.company_price}">
+                                {{ item.company_price ? '¥' + item.company_price : '-' }}
+                            </text>
+                        </view>
+                        <view class="price-grid-item">
+                            <text class="price-sublabel">批发价</text>
+                            <text class="price-subvalue" :class="{'no-price':!item.wholesale_price}">
+                                {{ item.wholesale_price ? '¥' + item.wholesale_price : '-' }}
+                            </text>
+                        </view>
+                        <view class="price-grid-item">
+                            <text class="price-sublabel">收货价</text>
+                            <text class="price-subvalue" :class="{'no-price':!item.purchase_price}">
+                                {{ item.purchase_price ? '¥' + item.purchase_price : '-' }}
+                            </text>
+                        </view>
+                    </view>
                 </view>
             </view>
             
@@ -1057,16 +1077,36 @@ $separator-color: #E5E5EA;
             font-size: 32rpx;
             font-weight: 600;
             color: $text-primary;
-            margin-bottom: 6rpx;
+            margin-bottom: 12rpx;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         
-        .item-code {
-            font-size: 24rpx;
+        .price-grid {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 16rpx;
+        }
+        .price-grid-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .price-sublabel {
+            font-size: 20rpx;
             color: $text-secondary;
-            letter-spacing: 0.5px;
+            margin-bottom: 4rpx;
+        }
+        .price-subvalue {
+            font-size: 26rpx;
+            font-weight: 600;
+            color: $theme-blue;
+            
+            &.no-price {
+                color: #C7C7CC;
+                font-weight: normal;
+            }
         }
     }
     

@@ -399,7 +399,12 @@ module.exports = {
                 { user_id: this.uid },
                 { name: regex }
             ])
-        ).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
+        )
+        .field({ name: 1, wholesale_price: 1, manufacturer: 1, company_price: 1, retail_price: 1, purchase_price: 1, image_url: 1 })
+        .orderBy('updated_at', 'desc')
+        .skip(skip)
+        .limit(limit)
+        .get();
         
         return res.data;
     },
@@ -424,7 +429,7 @@ module.exports = {
             .where({
                 user_id: this.uid
             })
-            .field({ name: 1, wholesale_price: 1, manufacturer: 1, company_price: 1, retail_price: 1 })
+            .field({ name: 1, wholesale_price: 1, manufacturer: 1, company_price: 1, retail_price: 1, purchase_price: 1, image_url: 1 })
             .limit(1000)
             .get();
         return res.data;
