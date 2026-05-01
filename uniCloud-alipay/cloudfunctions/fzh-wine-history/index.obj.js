@@ -39,9 +39,9 @@ module.exports = {
      * 添加/编辑记录
      */
     async addOrUpdate(params) {
-        const { id, wine_id, supplier, purchase_date, box_num, bottle_per_box, price_per_bottle, total_amount } = params;
+        const { id, wine_id, supplier, purchase_date, box_num, bottle_per_box, price_per_bottle, total_amount, remark } = params;
         
-        if (!wine_id) throw new Error('关联酒水ID不能为空');
+        if (!wine_id) throw new Error('鍏宠仈閰掓按ID涓嶈兘涓虹┖');
         const now = Date.now();
         
         let data = {
@@ -53,6 +53,7 @@ module.exports = {
             bottle_per_box: Number(bottle_per_box) || 0,
             price_per_bottle: parseFloat(price_per_bottle) || 0,
             total_amount: parseFloat(total_amount) || 0,
+            remark: remark || '',
             updated_at: now
         };
         

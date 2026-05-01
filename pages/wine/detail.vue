@@ -34,7 +34,7 @@
        <!-- Purchase Records Section -->
        <view class="section-header">
            <text class="section-title">进货记录</text>
-           <view v-if="!isViewMode" class="add-icon" @click="openRecordModal(null)">
+           <view class="add-icon" @click="openRecordModal(null)">
                <text>➕ 添加记录</text>
            </view>
        </view>
@@ -101,8 +101,11 @@
                                    <text class="info-val">¥{{ item.total_amount }}</text>
                                </view>
                            </view>
+                           <view v-if="item.remark" class="card-remark">
+                               <text class="remark-text">备注: {{ item.remark }}</text>
+                           </view>
                            
-                           <view v-if="!isViewMode" class="card-actions">
+                           <view class="card-actions">
                                <view class="action-btn edit" @click="openRecordModal(item)">修改</view>
                                <view class="action-btn delete" @click="deleteRecord(item)">删除</view>
                            </view>
@@ -258,6 +261,10 @@
                     </view>
                 </view>
                 <view class="tip-text">输入前三项自动计算总金额</view>
+                <view class="modal-form-item" style="margin-top: 32rpx;">
+                    <text class="m-label">备注</text>
+                    <input class="m-input" v-model="recordForm.remark" placeholder="选填" />
+                </view>
             </scroll-view>
             <view class="modal-footer">
                 <button class="btn-confirm" @click="saveRecord">确定</button>
@@ -504,7 +511,8 @@ const recordForm = reactive({
     box_num: '',
     bottle_per_box: '',
     price_per_bottle: '',
-    total_amount: ''
+    total_amount: '',
+    remark: ''
 });
 
 onLoad((options) => {
@@ -610,6 +618,7 @@ const openRecordModal = (item) => {
         recordForm.bottle_per_box = item.bottle_per_box;
         recordForm.price_per_bottle = item.price_per_bottle;
         recordForm.total_amount = item.total_amount;
+        recordForm.remark = item.remark || '';
         recordForm._currentId = item._id || item.id;
     } else {
         editingRecordIndex.value = -1;
@@ -622,6 +631,7 @@ const openRecordModal = (item) => {
         recordForm.bottle_per_box = '';
         recordForm.price_per_bottle = '';
         recordForm.total_amount = '';
+        recordForm.remark = '';
         recordForm._currentId = null;
     }
     showModal.value = true;
@@ -674,7 +684,8 @@ const saveRecord = async () => {
         box_num: Number(recordForm.box_num),
         bottle_per_box: Number(recordForm.bottle_per_box),
         price_per_bottle: Number(recordForm.price_per_bottle),
-        total_amount: Number(recordForm.total_amount)
+        total_amount: Number(recordForm.total_amount),
+        remark: recordForm.remark
     };
     
     loading.value = true;
@@ -953,6 +964,17 @@ $theme-red: #FF3B30;
             .info-val { color: $text-primary; font-weight: 500; }
             
             &.highlight .info-val { color: $theme-blue; font-weight: 600; }
+        }
+    }
+    
+    .card-remark {
+        margin-top: 10rpx;
+        padding-top: 10rpx;
+        border-top: 1rpx dashed #F0F0F5;
+        .remark-text {
+            font-size: 26rpx;
+            color: $text-secondary;
+            word-break: break-all;
         }
     }
     
