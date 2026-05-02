@@ -44,7 +44,7 @@ module.exports = {
      * @param {Object} params 
      */
 	async add(params) {
-		const { image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price } = params;
+		const { image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price, remark } = params;
         
         if (!name) throw new Error('请输入香烟名称');
 
@@ -56,12 +56,10 @@ module.exports = {
             name,
             manufacturer: manufacturer || '',
             wholesale_price: wholesale_price ? parseFloat(wholesale_price) : 0,
-            
-            // 选填字段处理：默认为0，仅当有值时设置更新时间，避免传 null 给 timestamp 类型字段报错
             purchase_price: purchase_price ? parseFloat(purchase_price) : 0,
             company_price: company_price ? parseFloat(company_price) : 0,
             retail_price: retail_price ? parseFloat(retail_price) : 0,
-
+            remark: remark || '',
             created_at: now,
             updated_at: now
         };
@@ -112,7 +110,7 @@ module.exports = {
      * @param {Object} params 
      */
     async update(params) {
-        const { id, image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price } = params;
+        const { id, image_url, name, manufacturer, wholesale_price, purchase_price, company_price, retail_price, remark } = params;
         
         if (!id) throw new Error('ID不能为空');
 
@@ -130,13 +128,10 @@ module.exports = {
             updated_at: now
         };
 
-        // 图片现在是选填，如果传了就更新，没传如果是空字符串也更新（比如删除图片场景，暂时这里只处理有值情况或显式更新）
-        // 这里假设前端传什么就更什么
         if (image_url !== undefined) updateData.image_url = image_url;
         if (name) updateData.name = name;
         if (manufacturer !== undefined) updateData.manufacturer = manufacturer;
 
-        // 检查价格变化，更新对应的时间戳
         if (wholesale_price !== undefined) {
              const newWholesale = wholesale_price ? parseFloat(wholesale_price) : 0;
              if(newWholesale !== oldData.wholesale_price) {
@@ -145,10 +140,6 @@ module.exports = {
              }
         }
         
-        // 选填字段更新逻辑
-        // 只要传了就更新，即使是空值也允许置空？通常输入框传空字符串
-        // 为了严谨，如果前端传了 purchase_price (哪怕是空串代表清空)，我们处理一下
-        // 但前端绑定的是 digit input，空可能是 undefined 或 null 或 ''
         if (purchase_price !== undefined) {
              const newPurchase = purchase_price ? parseFloat(purchase_price) : 0;
              if(newPurchase !== oldData.purchase_price) {
@@ -171,6 +162,10 @@ module.exports = {
                  updateData.retail_price = newRetail;
                  updateData.retail_price_updated_at = now;
              }
+        }
+
+        if (remark !== undefined) {
+            updateData.remark = remark;
         }
 
         await db.collection('fzh_cigarette').where({

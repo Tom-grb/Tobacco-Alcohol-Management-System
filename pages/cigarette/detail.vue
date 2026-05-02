@@ -43,6 +43,17 @@
                     placeholder-class="placeholder"
                 />
             </view>
+            <!-- Remark -->
+            <view class="form-item">
+                <text class="label">备注</text>
+                <input 
+                    class="input" 
+                    v-model="formData.remark" 
+                    placeholder="请输入备注" 
+                    :disabled="isViewMode"
+                    placeholder-class="placeholder"
+                />
+            </view>
        </view>
 
        <view class="form-group">
@@ -120,6 +131,8 @@
                     更新于: {{ formatDate(formData.retail_price_updated_at) }}
                 </text>
             </view>
+            <view class="divider"></view>
+
        </view>
 
        <!-- Action Buttons -->
@@ -182,7 +195,8 @@ const formData = reactive({
     wholesale_price_updated_at: null,
     purchase_price_updated_at: null,
     company_price_updated_at: null,
-    retail_price_updated_at: null
+    retail_price_updated_at: null,
+    remark: ''
 });
 
 const isViewMode = computed(() => mode.value === 'view');
@@ -206,6 +220,7 @@ const loadData = async (targetId) => {
         const res = await fzhCigarette.get(targetId);
         if (res) {
             Object.assign(formData, res);
+            formData.remark = res.remark || '';
         }
     } catch (e) {
         uni.showToast({ title: '加载失败', icon: 'none' });
@@ -380,7 +395,8 @@ const submit = async () => {
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
                 company_price: formData.company_price,
-                retail_price: formData.retail_price
+                retail_price: formData.retail_price,
+                remark: formData.remark
             });
             uni.showToast({ title: '添加成功', icon: 'success' });
             setTimeout(() => uni.navigateBack(), 1500);
@@ -393,7 +409,8 @@ const submit = async () => {
                 wholesale_price: formData.wholesale_price,
                 purchase_price: formData.purchase_price,
                 company_price: formData.company_price,
-                retail_price: formData.retail_price
+                retail_price: formData.retail_price,
+                remark: formData.remark
             });
             uni.showToast({ title: '更新成功', icon: 'success' });
             // Switch back to view mode and refresh
