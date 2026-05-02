@@ -19,12 +19,22 @@
 
     <view class="form-container">
        <view class="form-group-single">
-            <view class="form-item no-border">
+            <view class="form-item" style="border-bottom: 1rpx solid #E5E5EA;">
                 <text class="label">酒水名称</text>
                 <input 
                     class="input" 
                     v-model="formData.name" 
                     placeholder="请输入名称" 
+                    :disabled="isViewMode"
+                    placeholder-class="placeholder"
+                />
+            </view>
+            <view class="form-item no-border">
+                <text class="label">备注</text>
+                <input 
+                    class="input" 
+                    v-model="formData.remark" 
+                    placeholder="请输入备注(选填)" 
                     :disabled="isViewMode"
                     placeholder-class="placeholder"
                 />
@@ -288,7 +298,8 @@ const loading = ref(false);
 
 const formData = reactive({
     image_url: '',
-    name: ''
+    name: '',
+    remark: ''
 });
 
 const isViewMode = computed(() => mode.value === 'view');
@@ -537,6 +548,7 @@ const loadData = async (targetId) => {
         if (res) {
             formData.name = res.name;
             formData.image_url = res.image_url;
+            formData.remark = res.remark || '';
         }
     } catch (e) {
         uni.showToast({ title: '加载失败', icon: 'none' });
@@ -761,7 +773,8 @@ const submit = async () => {
         if (mode.value === 'add') {
             const res = await fzhWine.add({
                 image_url: formData.image_url,
-                name: formData.name
+                name: formData.name,
+                remark: formData.remark
             });
             id.value = res.id; // Set ID
             uni.showToast({ title: '添加成功', icon: 'success' });
@@ -781,7 +794,8 @@ const submit = async () => {
             await fzhWine.update({
                 id: id.value,
                 image_url: formData.image_url,
-                name: formData.name
+                name: formData.name,
+                remark: formData.remark
             });
             uni.showToast({ title: '更新成功', icon: 'success' });
             mode.value = 'view';

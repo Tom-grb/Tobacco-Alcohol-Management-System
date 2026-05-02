@@ -39,7 +39,7 @@ module.exports = {
      * 添加酒水
      */
 	async add(params) {
-		const { image_url, name } = params;
+		const { image_url, name, remark } = params;
         
         if (!name) {
             throw new Error('请输入酒水名称');
@@ -51,6 +51,7 @@ module.exports = {
             user_id: this.uid,
             image_url: image_url || '',
             name,
+            remark: remark || '',
             created_at: now,
             updated_at: now
         };
@@ -82,7 +83,7 @@ module.exports = {
      * 更新酒水
      */
     async update(params) {
-        const { id, image_url, name } = params;
+        const { id, image_url, name, remark } = params;
         
         if (!id) throw new Error('ID不能为空');
 
@@ -92,7 +93,8 @@ module.exports = {
         };
 
         if (image_url !== undefined) updateData.image_url = image_url;
-        if (name) updateData.name = name;
+        if (name !== undefined) updateData.name = name;
+        if (remark !== undefined) updateData.remark = remark;
 
         await db.collection('fzh_wine').where({
             _id: id,

@@ -29,6 +29,11 @@
 			"description": "图片地址",
 			"title": "图片"
 		},
+		"remark": {
+			"bsonType": "string",
+			"description": "备注",
+			"title": "备注"
+		},
 		"created_at": {
 			"bsonType": "timestamp",
 			"title": "创建时间",
