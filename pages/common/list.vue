@@ -30,6 +30,10 @@
                                 <text class="label">批发</text>
                                 <text class="value-price">¥{{ item.wholesale_price }}</text>
                             </view>
+                            <view class="price-box" style="margin-left: 30rpx;" v-if="type === 'wine' && (item.retail_price || item.retail_price === 0)">
+                                <text class="label">零售价</text>
+                                <text class="value-price">¥{{ item.retail_price }}</text>
+                            </view>
                             
                             <!-- 香烟显示公司价格和零售价格 -->
                             <view class="price-box" v-if="type === 'cigarette' && (item.company_price || item.company_price === 0)">

@@ -82,31 +82,33 @@
                 <!-- 中间信息 -->
                 <view class="item-info">
                     <text class="item-name">{{ item.name }}</text>
-                    <view class="price-grid" v-if="item.type !== 'wine'">
+                    <view class="price-grid">
                         <view class="price-grid-item">
                             <text class="price-sublabel">零售价</text>
                             <text class="price-subvalue" :class="{'no-price':!item.retail_price}">
                                 {{ item.retail_price ? '¥' + item.retail_price : '-' }}
                             </text>
                         </view>
-                        <view class="price-grid-item">
-                            <text class="price-sublabel">公司价</text>
-                            <text class="price-subvalue" :class="{'no-price':!item.company_price}">
-                                {{ item.company_price ? '¥' + item.company_price : '-' }}
-                            </text>
-                        </view>
-                        <view class="price-grid-item">
-                            <text class="price-sublabel">批发价</text>
-                            <text class="price-subvalue" :class="{'no-price':!item.wholesale_price}">
-                                {{ item.wholesale_price ? '¥' + item.wholesale_price : '-' }}
-                            </text>
-                        </view>
-                        <view class="price-grid-item">
-                            <text class="price-sublabel">收货价</text>
-                            <text class="price-subvalue" :class="{'no-price':!item.purchase_price}">
-                                {{ item.purchase_price ? '¥' + item.purchase_price : '-' }}
-                            </text>
-                        </view>
+                        <block v-if="item.type !== 'wine'">
+                            <view class="price-grid-item">
+                                <text class="price-sublabel">公司价</text>
+                                <text class="price-subvalue" :class="{'no-price':!item.company_price}">
+                                    {{ item.company_price ? '¥' + item.company_price : '-' }}
+                                </text>
+                            </view>
+                            <view class="price-grid-item">
+                                <text class="price-sublabel">批发价</text>
+                                <text class="price-subvalue" :class="{'no-price':!item.wholesale_price}">
+                                    {{ item.wholesale_price ? '¥' + item.wholesale_price : '-' }}
+                                </text>
+                            </view>
+                            <view class="price-grid-item">
+                                <text class="price-sublabel">收货价</text>
+                                <text class="price-subvalue" :class="{'no-price':!item.purchase_price}">
+                                    {{ item.purchase_price ? '¥' + item.purchase_price : '-' }}
+                                </text>
+                            </view>
+                        </block>
                     </view>
                 </view>
             </view>

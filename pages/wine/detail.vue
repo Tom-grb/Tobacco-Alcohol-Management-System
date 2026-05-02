@@ -29,6 +29,17 @@
                     placeholder-class="placeholder"
                 />
             </view>
+            <view class="form-item" style="border-bottom: 1rpx solid #E5E5EA;">
+                <text class="label">零售价</text>
+                <input 
+                    class="input" 
+                    type="digit"
+                    v-model="formData.retail_price" 
+                    placeholder="0.00" 
+                    :disabled="isViewMode"
+                    placeholder-class="placeholder"
+                />
+            </view>
             <view class="form-item no-border">
                 <text class="label">备注</text>
                 <input 
@@ -299,6 +310,7 @@ const loading = ref(false);
 const formData = reactive({
     image_url: '',
     name: '',
+    retail_price: '',
     remark: ''
 });
 
@@ -548,6 +560,7 @@ const loadData = async (targetId) => {
         if (res) {
             formData.name = res.name;
             formData.image_url = res.image_url;
+            formData.retail_price = res.retail_price || '';
             formData.remark = res.remark || '';
         }
     } catch (e) {
@@ -774,6 +787,7 @@ const submit = async () => {
             const res = await fzhWine.add({
                 image_url: formData.image_url,
                 name: formData.name,
+                retail_price: formData.retail_price,
                 remark: formData.remark
             });
             id.value = res.id; // Set ID
@@ -795,6 +809,7 @@ const submit = async () => {
                 id: id.value,
                 image_url: formData.image_url,
                 name: formData.name,
+                retail_price: formData.retail_price,
                 remark: formData.remark
             });
             uni.showToast({ title: '更新成功', icon: 'success' });

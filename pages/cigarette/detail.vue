@@ -44,6 +44,8 @@
                 />
             </view>
             <!-- Remark -->
+            <view class="divider"></view>
+
             <view class="form-item">
                 <text class="label">备注</text>
                 <input 

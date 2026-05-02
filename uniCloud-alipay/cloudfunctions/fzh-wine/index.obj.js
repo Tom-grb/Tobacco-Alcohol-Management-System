@@ -39,7 +39,7 @@ module.exports = {
      * 添加酒水
      */
 	async add(params) {
-		const { image_url, name, remark } = params;
+		const { image_url, name, remark, retail_price } = params;
         
         if (!name) {
             throw new Error('请输入酒水名称');
@@ -52,6 +52,7 @@ module.exports = {
             image_url: image_url || '',
             name,
             remark: remark || '',
+            retail_price: retail_price ? parseFloat(retail_price) : 0,
             created_at: now,
             updated_at: now
         };
@@ -83,7 +84,7 @@ module.exports = {
      * 更新酒水
      */
     async update(params) {
-        const { id, image_url, name, remark } = params;
+        const { id, image_url, name, remark, retail_price } = params;
         
         if (!id) throw new Error('ID不能为空');
 
@@ -95,6 +96,7 @@ module.exports = {
         if (image_url !== undefined) updateData.image_url = image_url;
         if (name !== undefined) updateData.name = name;
         if (remark !== undefined) updateData.remark = remark;
+        if (retail_price !== undefined) updateData.retail_price = retail_price ? parseFloat(retail_price) : 0;
 
         await db.collection('fzh_wine').where({
             _id: id,
@@ -132,7 +134,9 @@ module.exports = {
         const res = await db.collection('fzh_wine').where({
             user_id: this.uid,
             name: regex
-        }).orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
+        })
+        .field({ name: 1, retail_price: 1, image_url: 1, updated_at: 1 })
+        .orderBy('updated_at', 'desc').skip(skip).limit(limit).get();
         return res.data;
     },
 
@@ -148,7 +152,7 @@ module.exports = {
             .where({
                 user_id: this.uid
             })
-            .field({ name: 1, wholesale_price: 1 })
+            .field({ name: 1, retail_price: 1, image_url: 1 })
             .limit(1000)
             .get();
         return res.data;
